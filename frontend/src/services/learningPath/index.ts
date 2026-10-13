@@ -10,11 +10,16 @@ export {
 } from './learningPathProgress';
 export { getAssessmentInfo, buildAssessmentInfoMap } from './learningPathAssessment';
 export type { LPAssessmentInfo } from './learningPathAssessment';
-export { getAttainedLevels, getGainedSkills, SKILL_GAINING_STATUSES } from './skillAttainment';
+export { getAttainedLevels, SKILL_GAINING_STATUSES } from './skillAttainment';
 export { deriveWaiversFromOptionalNodes } from './levelWaivers';
-export { buildPathSkillSummary, aggregateSkills, filterPathSummaries } from './skillAggregation';
-export type { PathSkillSummary, PathSkillStatus, SkillAggregate, PathSkillFilters, SkillSourceRef } from './skillAggregation';
-export { buildSkillIndex, getRecentlyGainedSkills, getMostReinforcedSkills, filterSkillEntries } from './skillIndex';
-export type { SkillIndexEntry, SkillOrigin, SkillStatusFilter, SkillIndexFilters } from './skillIndex';
+export {
+  buildPathSkillSummary,
+  courseSkillCodes,
+  derivePathSkillCodes,
+  filterPathSummaries,
+  getFinishedCourseIds,
+  splitPathSkills,
+} from './skillAggregation';
+export type { PathSkillSummary, PathSkillStatus, SkillAggregate, PathSkillFilters } from './skillAggregation';
 export { buildSkillGrowthSeries } from './skillGrowth';
-export type { SkillGrowthPoint, SkillGrowthSeries } from './skillGrowth';
+export type { DatedSkill, SkillGrowthPoint, SkillGrowthSeries } from './skillGrowth';

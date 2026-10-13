@@ -300,7 +300,8 @@
     "batchEndedTitle": "انتهت الدفعة",
     "batchExpiredProgressWarning": "لن يتم احتساب التقدم لهذه الدورة لأن الدفعة قد انتهت.",
     "batchExpiringSoonTitle": "الدورة ستنتهي قريبًا",
-    "batchExpiringSoonWarning": "ستنتهي دورتك في {{date}}. أكملها قريبًا!"
+    "batchExpiringSoonWarning": "ستنتهي دورتك في {{date}}. أكملها قريبًا!",
+    "skillAlreadyHeld": "لديك هذه المهارة بالفعل"
   },
   "profileDataSharing": {
     "cardTitle": "مشاركة بيانات الملف الشخصي",
@@ -1319,7 +1320,7 @@
   },
   "mySkills": {
     "title": "مهاراتي",
-    "subtitle": "كل مهارة اكتسبتها أو ما زلت تعمل على تحقيقها، عبر جميع مسارات التعلم الخاصة بك.",
+    "subtitle": "كل مهارة اكتسبتها، من الدورات أو التقييمات أو مسارات التعلم أو الشهادات، والمهارات التي لا تزال أمامك في مسارات التعلم الخاصة بك.",
     "loading": "جارٍ تحميل مهاراتك...",
     "errorLoading": "فشل تحميل مهاراتك. يرجى المحاولة مرة أخرى.",
     "analyzedProgress": "تم تحليل {{done}} من {{total}} مسارات",
@@ -1330,14 +1331,13 @@
     "pathsCompleted": "المسارات المكتملة",
     "pathsOngoing": "المسارات قيد التقدم",
     "searchPlaceholder": "ابحث عن المهارات أو المسارات",
-    "noPaths": "انضم إلى مسار تعلم لبدء بناء مهاراتك.",
     "noResults": "لا توجد مسارات تعلم تطابق بحثك.",
     "gainedOfTotal": "{{gained}} من {{total}} مهارات",
     "viewPathStatus": "عرض حالة المسار",
     "loadMore": "تحميل المزيد",
     "skillsGainedSection": "مكتسبة ({{count}})",
     "skillsPendingSection": "لم يتم فتحها بعد ({{count}})",
-    "keepGoing": "واصل التقدم — كل مستوى تنهيه يفتح مهاراته.",
+    "keepGoing": "واصل التقدم — كل دورة تنهيها قد تضيف مهارات جديدة.",
     "viewBySkill": "حسب المهارة",
     "viewByPath": "حسب المسار",
     "filterLabel": "تصفية النتائج",
@@ -1345,11 +1345,9 @@
     "pending": "معلقة",
     "recentlyGained": "المكتسبة مؤخرًا",
     "mostReinforced": "الأكثر تعزيزًا",
-    "earnedFrom": "من أين تأتي",
     "pathCount": "{{count}} مسار",
     "skillCount": "{{count}} مهارة",
     "pathResultCount": "{{count}} مسار",
-    "levelLabel": "المستوى {{index}} · {{name}}",
     "noSkillResults": "لا توجد مهارات تطابق بحثك.",
     "today": "اليوم",
     "yesterday": "أمس",
@@ -1362,11 +1360,26 @@
     "sourceDiscover": "مسار جديد",
     "newSkillCount": "{{count}} مهارة/مهارات جديدة",
     "moreSkills": "+{{count}} أخرى",
-    "viewAll": "عرض الكل"
+    "viewAll": "عرض الكل",
+    "noSkills": "لا توجد مهارات بعد. أكمل دورة أو انضم إلى مسار تعلم لبدء بناء مهاراتك.",
+    "profileError": "تعذر تحميل المهارات التي اكتسبتها، لذا قد تكون بعض المهارات المعروضة كمعلقة مكتسبة لديك بالفعل.",
+    "howEarned": "كيف اكتسبتها",
+    "noEvidence": "لم يتم تسجيل أي دليل داعم بعد.",
+    "alsoTaughtIn": "تُدرَّس أيضًا في",
+    "stillToDoIn": "لا يزال مطلوبًا في",
+    "allGroups": "جميع المجموعات",
+    "groupFilterLabel": "التصفية حسب مجموعة المهارات",
+    "source": {
+      "course": "دورة",
+      "assessment": "تقييم",
+      "learningPath": "مسار تعلم",
+      "external": "شهادة خارجية",
+      "other": "أخرى"
+    }
   },
   "profileSkills": {
     "cardTitle": "مهاراتي",
-    "cardDescription": "اطّلع على كل مهارة اكتسبتها عبر جميع مسارات التعلم الخاصة بك.",
+    "cardDescription": "اطّلع على كل مهارة اكتسبتها والمهارات التي لا تزال أمامك في مسارات التعلم.",
     "cardCta": "عرض المهارات"
   },
   "trackableCollection": {
@@ -1594,7 +1607,6 @@
     "download": "تنزيل",
     "verify": "تحقق",
     "yourScores": "درجاتك",
-    "skillsCovered": "المهارات المكتسبة",
     "pathComplete": "لقد أكملت {{pathTitle}}",
     "levelsCompleted": "اكتملت جميع المستويات الـ{{levelCount}}",
     "enrol": "التسجيل",
@@ -1625,25 +1637,17 @@
     "dashboardTitle": "لوحة تحكم مسار التعلم",
     "manageDashboard": "إدارة لوحة التحكم لهذا المسار",
     "selectBatchHint": "اختر مجموعة من القائمة أعلاه لعرض تقرير المسار.",
+    "skillsFromThisPath": "مهارات هذا المسار",
+    "skillsHeldOf": "تم اكتساب {{held}} من {{total}} مهارات",
+    "skillHeld": "مكتسبة",
+    "givesYou": "يمنحك: {{skills}}",
+    "alreadyHold": "لديك بالفعل: {{skills}}",
+    "skillPending": "معلقة",
+    "viewMySkills": "عرض مهاراتي",
     "progressTowardRole": "Your progress toward {{role}}",
-    "skillsFromThisPath": "Skills from this path",
-    "skillsHeldOf": "{{held}} of {{total}} skills",
-    "notOnThisPath": "not on this path",
-    "viewFullProfile": "View full profile",
-    "skillHeld": "Held",
-    "skillNotStarted": "Not started",
-    "givesYou": "Gives you: {{skills}}",
-    "alreadyHold": "You already hold: {{skills}}"
+    "notOnThisPath": "not on this path"
   },
   "skillProfile": {
-    "title": "My Competency Profile",
-    "subtitle": "The skills you hold, how ready you are for your role, and what to do next.",
-    "cardTitle": "Competency Profile",
-    "cardDescription": "Skills you hold and your readiness for a role",
-    "cardCta": "View profile",
-    "skillsHeld": "Skills held",
-    "tierCount": "{{count}} skills",
-    "otherTier": "Other skills",
     "currentRole": "Current role",
     "currentRoleUnset": "Not set — assigned by your organisation",
     "targetRole": "Target role",
@@ -1654,16 +1658,6 @@
     "nextSteps": "What to do next",
     "nextStepsFor": "to reach {{role}}",
     "covers": "Covers {{covered}} of {{total}} skills",
-    "alreadyHeld": "{{count}} already held",
-    "evidenceCount": "{{count}} evidence",
-    "noEvidence": "No supporting evidence recorded yet.",
-    "emptyTitle": "No skills recorded yet",
-    "emptyBody": "Complete a tagged course or assessment and the skills you prove will appear here.",
-    "source": {
-      "COURSE": "Course",
-      "ASSESSMENT": "Assessment",
-      "LEARNING_PATH": "Learning Path",
-      "EXTERNAL": "External credential"
-    }
+    "alreadyHeld": "{{count}} already held"
   }
 }

@@ -3,8 +3,12 @@ import { useAppI18n } from '@/hooks/useAppI18n';
 import { SkillTag } from './SkillTag';
 
 interface SkillCelebrationPanelProps {
+  /** Skill codes: the path's gained + pending skills. */
   allSkills: string[];
+  /** Codes held from any source (skill profile). */
   gainedSkills: ReadonlySet<string>;
+  /** Display name for a code. */
+  nameOf: (code: string) => string;
   selectedSkill: string | null;
   onSelectSkill: (skill: string) => void;
   onClearSkill: () => void;
@@ -14,6 +18,7 @@ interface SkillCelebrationPanelProps {
 export function SkillCelebrationPanel({
   allSkills,
   gainedSkills,
+  nameOf,
   selectedSkill,
   onSelectSkill,
   onClearSkill,
@@ -43,7 +48,7 @@ export function SkillCelebrationPanel({
             className="flex items-center gap-1 rounded-pill bg-sunbird-brick/10 px-2.5 py-1 text-xs font-medium text-sunbird-brick"
             data-testid="skill-filter-clear"
           >
-            {t('learningPath.showingSkill', { skill: selectedSkill })}
+            {t('learningPath.showingSkill', { skill: nameOf(selectedSkill) })}
             <FiX className="h-3 w-3" />
           </button>
         ) : (
@@ -61,6 +66,7 @@ export function SkillCelebrationPanel({
               <SkillTag
                 key={skill}
                 skill={skill}
+                label={nameOf(skill)}
                 gained
                 index={i}
                 selected={selectedSkill === skill}
@@ -82,6 +88,7 @@ export function SkillCelebrationPanel({
               <SkillTag
                 key={skill}
                 skill={skill}
+                label={nameOf(skill)}
                 gained={false}
                 index={i}
                 selected={selectedSkill === skill}

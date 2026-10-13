@@ -5,6 +5,7 @@ import type { ReactNode } from 'react';
 import { useMySkills } from './useMySkills';
 import { LP_HIERARCHY_NO_ASSESSMENTS } from '../services/learningPath/__fixtures__/lpHierarchyNoAssessments.fixture';
 import type { TrackableCollection } from '../types/TrackableCollections';
+import type { HeldSkill } from '../types/skillServiceTypes';
 
 const LP_ID = LP_HIERARCHY_NO_ASSESSMENTS.identifier;
 
@@ -21,6 +22,22 @@ vi.mock('./useUserEnrolledCollections', () => ({
 
 vi.mock('./useViewerSummary', () => ({
   useViewerSummary: () => ({ data: [], isLoading: false }),
+}));
+
+let mockHeld: HeldSkill[] = [];
+let mockProfileError = false;
+vi.mock('./useSkillProfile', () => ({
+  useSkillProfile: () => ({
+    skills: mockHeld,
+    frameworkIds: [],
+    isLoading: false,
+    isError: mockProfileError,
+    refetch: vi.fn(),
+  }),
+  useSkillLabels: () => ({
+    labelOf: (code: string) => ({ name: code, resolved: false }),
+    isLoading: false,
+  }),
 }));
 
 vi.mock('../services/collection', () => ({
@@ -66,6 +83,24 @@ function wrapper({ children }: { children: ReactNode }) {
 describe('useMySkills', () => {
   beforeEach(() => {
     mockCourses = [];
+    mockHeld = [];
+    mockProfileError = false;
+  });
+
+  // A skill from a standalone course or an external certificate needs no Learning Path.
+  it('lists profile skills as gained even with no enrolled paths', () => {
+    mockHeld = [{ skillId: 'nrp', frameworkId: 'fw', sourceType: 'EXTERNAL', evidence: [] }];
+    const { result } = renderHook(() => useMySkills(), { wrapper });
+    expect(result.current.skills).toEqual([expect.objectContaining({ code: 'nrp', gained: true, source: 'external' })]);
+    expect(result.current.aggregate.gainedSkills).toBe(1);
+    expect(result.current.heldCodes.has('nrp')).toBe(true);
+  });
+
+  it('surfaces a profile failure without failing the whole page', () => {
+    mockProfileError = true;
+    const { result } = renderHook(() => useMySkills(), { wrapper });
+    expect(result.current.profileError).toBe(true);
+    expect(result.current.isError).toBe(false);
   });
 
   it('returns no paths when there are no enrollments', () => {
@@ -100,6 +135,6 @@ describe('useMySkills', () => {
     await waitFor(() => expect(result.current.analyzedCount).toBe(1));
 
     expect(result.current.entries[0]?.summary?.pathId).toBe(LP_ID);
-    expect(result.current.aggregate.totalSkills).toBeGreaterThan(0);
+    expect(result.current.entries[0]?.summary?.taughtCodes.length).toBeGreaterThan(0);
   });
 });

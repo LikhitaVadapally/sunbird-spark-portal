@@ -300,7 +300,8 @@
     "batchEndedTitle": "Batch Ended",
     "batchExpiredProgressWarning": "Progress won't be calculated for this course as the batch has ended.",
     "batchExpiringSoonTitle": "Course Expiring Soon",
-    "batchExpiringSoonWarning": "Your course will expire on {{date}}. Complete it soon!"
+    "batchExpiringSoonWarning": "Your course will expire on {{date}}. Complete it soon!",
+    "skillAlreadyHeld": "You already hold this skill"
   },
   "profileDataSharing": {
     "cardTitle": "Profile Data Sharing",
@@ -1320,7 +1321,7 @@
   },
   "mySkills": {
     "title": "My Skills",
-    "subtitle": "Every skill you've gained or are still working towards, across all your Learning Paths.",
+    "subtitle": "Every skill you've gained, from courses, assessments, Learning Paths or certificates, and the ones still ahead in your Learning Paths.",
     "loading": "Loading your skills...",
     "errorLoading": "Failed to load your skills. Please try again.",
     "analyzedProgress": "Analyzed {{done}} of {{total}} paths",
@@ -1331,14 +1332,13 @@
     "pathsCompleted": "Paths completed",
     "pathsOngoing": "Paths in progress",
     "searchPlaceholder": "Search skills or paths",
-    "noPaths": "Join a Learning Path to start building your skills.",
     "noResults": "No Learning Paths match your search.",
     "gainedOfTotal": "{{gained}} of {{total}} skills",
     "viewPathStatus": "View path status",
     "loadMore": "Load more",
     "skillsGainedSection": "Gained ({{count}})",
     "skillsPendingSection": "Still to unlock ({{count}})",
-    "keepGoing": "Keep going — each level you finish unlocks its skills.",
+    "keepGoing": "Keep going — every course you finish can add new skills.",
     "viewBySkill": "By skill",
     "viewByPath": "By path",
     "filterLabel": "Filter results",
@@ -1346,11 +1346,9 @@
     "pending": "Pending",
     "recentlyGained": "Recently gained",
     "mostReinforced": "Most reinforced",
-    "earnedFrom": "Where it comes from",
     "pathCount": "{{count}} path(s)",
     "skillCount": "{{count}} skill(s)",
     "pathResultCount": "{{count}} path(s)",
-    "levelLabel": "Level {{index}} · {{name}}",
     "noSkillResults": "No skills match your search.",
     "today": "Today",
     "yesterday": "Yesterday",
@@ -1363,11 +1361,26 @@
     "sourceDiscover": "New path",
     "newSkillCount": "{{count}} new skill(s)",
     "moreSkills": "+{{count}} more",
-    "viewAll": "View all"
+    "viewAll": "View all",
+    "noSkills": "No skills yet. Complete a course or join a Learning Path to start building your skills.",
+    "profileError": "We couldn't load the skills you've gained, so some skills shown as pending may already be yours.",
+    "howEarned": "How I earned this",
+    "noEvidence": "No supporting evidence recorded yet.",
+    "alsoTaughtIn": "Also taught in",
+    "stillToDoIn": "Still to do in",
+    "allGroups": "All groups",
+    "groupFilterLabel": "Filter by skill group",
+    "source": {
+      "course": "Course",
+      "assessment": "Assessment",
+      "learningPath": "Learning path",
+      "external": "External certificate",
+      "other": "Other"
+    }
   },
   "profileSkills": {
     "cardTitle": "My Skills",
-    "cardDescription": "See every skill you've gained across all your Learning Paths.",
+    "cardDescription": "See every skill you've gained, and the ones still ahead in your Learning Paths.",
     "cardCta": "View skills"
   },
   "trackableCollection": {
@@ -1595,7 +1608,6 @@
     "download": "Download",
     "verify": "Verify",
     "yourScores": "Your scores",
-    "skillsCovered": "Skills covered",
     "pathComplete": "You've completed {{pathTitle}}",
     "levelsCompleted": "All {{levelCount}} levels complete",
     "enrol": "Enrol",
@@ -1626,25 +1638,17 @@
     "dashboardTitle": "Learning Path Dashboard",
     "manageDashboard": "Manage dashboard for this path",
     "selectBatchHint": "Select a batch from the dropdown above to view its path report.",
-    "progressTowardRole": "Your progress toward {{role}}",
     "skillsFromThisPath": "Skills from this path",
-    "skillsHeldOf": "{{held}} of {{total}} skills",
-    "notOnThisPath": "not on this path",
-    "viewFullProfile": "View full profile",
-    "skillHeld": "Held",
-    "skillNotStarted": "Not started",
+    "skillsHeldOf": "{{held}} of {{total}} skills gained",
+    "skillHeld": "Gained",
     "givesYou": "Gives you: {{skills}}",
-    "alreadyHold": "You already hold: {{skills}}"
+    "alreadyHold": "You already hold: {{skills}}",
+    "skillPending": "Pending",
+    "viewMySkills": "View My Skills",
+    "progressTowardRole": "Your progress toward {{role}}",
+    "notOnThisPath": "not on this path"
   },
   "skillProfile": {
-    "title": "My Competency Profile",
-    "subtitle": "The skills you hold, how ready you are for your role, and what to do next.",
-    "cardTitle": "Competency Profile",
-    "cardDescription": "Skills you hold and your readiness for a role",
-    "cardCta": "View profile",
-    "skillsHeld": "Skills held",
-    "tierCount": "{{count}} skills",
-    "otherTier": "Other skills",
     "currentRole": "Current role",
     "currentRoleUnset": "Not set — assigned by your organisation",
     "targetRole": "Target role",
@@ -1655,16 +1659,6 @@
     "nextSteps": "What to do next",
     "nextStepsFor": "to reach {{role}}",
     "covers": "Covers {{covered}} of {{total}} skills",
-    "alreadyHeld": "{{count}} already held",
-    "evidenceCount": "{{count}} evidence",
-    "noEvidence": "No supporting evidence recorded yet.",
-    "emptyTitle": "No skills recorded yet",
-    "emptyBody": "Complete a tagged course or assessment and the skills you prove will appear here.",
-    "source": {
-      "COURSE": "Course",
-      "ASSESSMENT": "Assessment",
-      "LEARNING_PATH": "Learning Path",
-      "EXTERNAL": "External credential"
-    }
+    "alreadyHeld": "{{count}} already held"
   }
 }

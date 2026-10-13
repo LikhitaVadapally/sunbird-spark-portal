@@ -19,9 +19,47 @@ interface MySkillsControlsProps {
   /** Filter options for the active view, in display order. */
   filterOptions: { value: string; label: string }[];
   resultLabel: string;
+  /** Skill-group labels to narrow by (the skill's parent term). Hidden when there are none. */
+  groupOptions?: string[];
+  group?: string;
+  onGroupChange?: (group: string) => void;
 }
 
-/** View switch, search and a view-appropriate status narrow, on one row. */
+interface FilterMenuProps {
+  label: string;
+  ariaLabel: string;
+  options: { value: string; label: string }[];
+  onSelect: (value: string) => void;
+}
+
+function FilterMenu({ label, ariaLabel, options, onSelect }: FilterMenuProps) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          className="flex min-w-[8rem] max-w-[14rem] shrink-0 items-center justify-between gap-2 rounded-md border border-gray-200 bg-white px-3 py-1.5 text-sm font-normal text-foreground transition-colors hover:bg-gray-50"
+          aria-label={ariaLabel}
+        >
+          <span className="truncate">{label}</span>
+          <FiChevronDown className="h-4 w-4 shrink-0 text-sunbird-theme-accent" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="z-50 max-h-80 min-w-[9.5rem] overflow-y-auto bg-white">
+        {options.map((option) => (
+          <DropdownMenuItem
+            key={option.value}
+            className="cursor-pointer hover:bg-sunbird-theme-accent-muted/10 hover:text-sunbird-theme-accent-muted"
+            onClick={() => onSelect(option.value)}
+          >
+            {option.label}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+/** View switch, search, a view-appropriate status narrow and (skills view) a group narrow, on one row. */
 export function MySkillsControls({
   view,
   onViewChange,
@@ -31,9 +69,13 @@ export function MySkillsControls({
   onFilterChange,
   filterOptions,
   resultLabel,
+  groupOptions = [],
+  group = '',
+  onGroupChange,
 }: MySkillsControlsProps) {
   const { t } = useAppI18n();
   const activeLabel = filterOptions.find((o) => o.value === filter)?.label ?? '';
+  const showGroups = view === 'skills' && groupOptions.length > 0 && Boolean(onGroupChange);
 
   const tabClass = (isActive: boolean) =>
     `rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
@@ -66,7 +108,7 @@ export function MySkillsControls({
         <span className="hidden text-xs text-sunbird-gray-75 sm:inline">{resultLabel}</span>
       </div>
 
-      <div className="flex flex-1 items-center gap-3 lg:max-w-xl lg:justify-end">
+      <div className="flex flex-1 items-center gap-3 lg:max-w-2xl lg:justify-end">
         <div className="relative flex-1">
           <FiSearch className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-sunbird-gray-75" />
           <input
@@ -79,28 +121,24 @@ export function MySkillsControls({
           />
         </div>
 
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button
-              className="flex min-w-[8rem] shrink-0 items-center justify-between gap-2 rounded-md border border-gray-200 bg-white px-3 py-1.5 text-sm font-normal text-foreground transition-colors hover:bg-gray-50"
-              aria-label={t('mySkills.filterLabel')}
-            >
-              <span>{activeLabel}</span>
-              <FiChevronDown className="h-4 w-4 text-sunbird-theme-accent" />
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="z-50 w-[9.5rem] bg-white">
-            {filterOptions.map((option) => (
-              <DropdownMenuItem
-                key={option.value}
-                className="cursor-pointer hover:bg-sunbird-theme-accent-muted/10 hover:text-sunbird-theme-accent-muted"
-                onClick={() => onFilterChange(option.value)}
-              >
-                {option.label}
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
+        {showGroups && (
+          <FilterMenu
+            label={group || t('mySkills.allGroups')}
+            ariaLabel={t('mySkills.groupFilterLabel')}
+            options={[
+              { value: '', label: t('mySkills.allGroups') },
+              ...groupOptions.map((g) => ({ value: g, label: g })),
+            ]}
+            onSelect={(value) => onGroupChange?.(value)}
+          />
+        )}
+
+        <FilterMenu
+          label={activeLabel}
+          ariaLabel={t('mySkills.filterLabel')}
+          options={filterOptions}
+          onSelect={onFilterChange}
+        />
       </div>
     </div>
   );

@@ -7,6 +7,7 @@ interface StatusTimelineProps {
   attainedLevels: boolean[];
   levelProgress: LevelProgressInfo[];
   gainedSkills: ReadonlySet<string>;
+  nameOf: (code: string) => string;
   selectedSkill: string | null;
   expandedLevelIds: ReadonlySet<string>;
   summaryByCollectionId: Map<string, ViewerSummaryRecord>;
@@ -21,6 +22,7 @@ export function StatusTimeline({
   attainedLevels,
   levelProgress,
   gainedSkills,
+  nameOf,
   selectedSkill,
   expandedLevelIds,
   summaryByCollectionId,
@@ -39,6 +41,7 @@ export function StatusTimeline({
           attained={attainedLevels[i] ?? false}
           progress={levelProgress[i] ?? { pct: 0, completed: 0, total: 0, doneCourses: 0 }}
           gainedSkills={gainedSkills}
+          nameOf={nameOf}
           selectedSkill={selectedSkill}
           expanded={expandedLevelIds.has(level.identifier)}
           summaryByCollectionId={summaryByCollectionId}

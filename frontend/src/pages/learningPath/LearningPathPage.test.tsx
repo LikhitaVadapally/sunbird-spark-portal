@@ -7,7 +7,13 @@ import type { LPCourseNode, LPLevelNode } from '@/types/learningPathTypes';
 vi.mock('@/hooks/usePathSkills', () => ({
   // The overview now surfaces skill progress, which reaches the competency APIs. These tests are
   // about layout and the creator/enrol panels, so the hook is stubbed to "nothing to show".
-  usePathSkills: () => ({ summary: undefined, name: (c: string) => c, roleName: '', isLoading: false }),
+  usePathSkills: () => ({
+    summary: undefined,
+    heldCodes: new Set(),
+    stateOf: () => undefined,
+    name: (c: string) => c,
+    isLoading: false,
+  }),
 }));
 vi.mock('@/hooks/useAppI18n', () => ({
   useAppI18n: () => ({ t: (key: string) => key }),
@@ -74,6 +80,7 @@ type LpTestData = {
     priorAssessment: LPCourseNode;
     outcomeAssessment: LPCourseNode;
     allSkills: string[];
+    allSkillCodes: string[];
     courseTotal: number;
     leafTotal: number;
   };
@@ -123,6 +130,7 @@ function buildLp(overrides: Partial<LpTestData> = {}): LpTestData {
       priorAssessment: priorCourse,
       outcomeAssessment: outcomeCourse,
       allSkills: ['Data literacy'],
+      allSkillCodes: [],
       courseTotal: 3,
       leafTotal: 3,
     },
@@ -300,6 +308,7 @@ describe('LearningPathPage', () => {
         priorAssessment: priorCourse,
         outcomeAssessment: undefined as unknown as LPCourseNode,
         allSkills: ['Data literacy'],
+      allSkillCodes: [],
         courseTotal: 2,
         leafTotal: 2,
       },

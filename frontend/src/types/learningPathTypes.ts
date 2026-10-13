@@ -63,7 +63,13 @@ export interface LPLevelNode {
   index: number;
   description?: string;
   skills: string[];
+  /** The Level's own codes, or - when it carries none - the union of its courses' codes. */
   skillCodes: string[];
+  /**
+   * Only the codes tagged on the Level itself. An untagged course falls back to these (not to
+   * the union above, which would borrow its siblings' skills).
+   */
+  ownSkillCodes?: string[];
   courses: LPCourseNode[];
 }
 

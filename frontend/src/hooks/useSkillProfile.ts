@@ -1,26 +1,22 @@
-import { useMemo } from 'react';
-import { useQuery, useQueries, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useCallback, useMemo } from 'react';
+import { useQuery, useQueries, useMutation } from '@tanstack/react-query';
 import type { UseMutationResult } from '@tanstack/react-query';
 import {
   skillService,
   normaliseProfile,
-  normaliseGap,
-  normaliseRecommendation,
   normaliseFrameworkMeta,
   buildSkillVocabulary,
+  resolveSkillLabel,
+  type SkillLabel,
   type SkillVocabulary,
   type TaxonomyFrameworkResponse,
 } from '@/services/skill';
 import { FrameworkService } from '@/services/FrameworkService';
 import { useUserId } from './useAuthInfo';
-import type {
-  CompetencyFrameworkMeta,
-  HeldSkill,
-  Recommendation,
-  SkillGap,
-} from '@/types/skillServiceTypes';
+import type { CompetencyFrameworkMeta, HeldSkill } from '@/types/skillServiceTypes';
 
 const frameworkService = new FrameworkService();
+const NO_SKILLS: HeldSkill[] = [];
 
 /**
  * The learner's held skills. `evidence: true` so a card can answer "what proved this?"
@@ -38,7 +34,8 @@ export function useSkillProfile() {
     enabled: Boolean(userId),
   });
 
-  const skills: HeldSkill[] = query.data ?? [];
+  // A stable empty array: a fresh `[]` per render would re-run every memo keyed on it.
+  const skills: HeldSkill[] = query.data ?? NO_SKILLS;
   const frameworkIds = useMemo(
     () => Array.from(new Set(skills.map((s) => s.frameworkId).filter(Boolean))),
     [skills]
@@ -54,53 +51,68 @@ export function useSkillProfile() {
 }
 
 /**
- * Readiness against the learner's current role and each saved target.
+ * The skill tree of each framework, as a code -> name/parent index.
  *
- * `role` previews a role the learner has not saved: the service returns it as `current`,
- * which is how "what if I aimed at this?" is answered without writing anything first.
+ * Display names and the parent term ("Infection Prevention") live only on the taxonomy
+ * framework's nested terms, so this is the one read the learner side needs. Split out of
+ * `useSkillFrameworks` because the competency read there (tiers, roles) is admin-only now that
+ * role readiness is hidden from learners. Shares its cache key with `useSkillFrameworks`, so
+ * the admin screen and the learner pages never read the same tree twice.
  */
-export function useSkillGap(frameworkId: string | undefined, role?: string): {
-  gap: SkillGap | undefined;
+export function useSkillVocabularies(frameworkIds: string[]): {
+  vocabularies: Record<string, SkillVocabulary | undefined>;
   isLoading: boolean;
-  isError: boolean;
 } {
-  const userId = useUserId();
-  const query = useQuery({
-    queryKey: ['skillGap', userId, frameworkId, role],
-    queryFn: async () =>
-      normaliseGap(
-        (await skillService.gapRead({ ...(frameworkId ? { frameworkId } : {}), ...(role ? { role } : {}) })).data
-      ),
-    enabled: Boolean(userId && frameworkId),
-  });
-  return { gap: query.data, isLoading: query.isLoading, isError: query.isError };
-}
+  const ids = useMemo(() => Array.from(new Set(frameworkIds.filter(Boolean))).sort(), [frameworkIds]);
 
-/** Outstanding skills and the ranked content that closes them. */
-export function useSkillRecommend(frameworkId: string | undefined, role?: string): {
-  recommendation: Recommendation | undefined;
-  isLoading: boolean;
-} {
-  const userId = useUserId();
-  const query = useQuery({
-    queryKey: ['skillRecommend', userId, frameworkId, role],
-    queryFn: async () =>
-      normaliseRecommendation(
-        (await skillService.recommend({ ...(frameworkId ? { frameworkId } : {}), ...(role ? { role } : {}) })).data
-      ),
-    enabled: Boolean(userId && frameworkId && role),
+  const treeQueries = useQueries({
+    queries: ids.map((id) => ({
+      queryKey: ['framework', id],
+      queryFn: () => frameworkService.read<TaxonomyFrameworkResponse>(id),
+      enabled: Boolean(id),
+      // A framework changes on publish, not per session; refetching it on every focus only
+      // re-flashes the skeleton.
+      staleTime: 30 * 60 * 1000,
+    })),
   });
-  return { recommendation: query.data, isLoading: query.isLoading };
+
+  const vocabularies = useMemo(() => {
+    const out: Record<string, SkillVocabulary | undefined> = {};
+    ids.forEach((id, i) => {
+      out[id] = buildSkillVocabulary(id, treeQueries[i]?.data?.data);
+    });
+    return out;
+  }, [ids, treeQueries]);
+
+  return { vocabularies, isLoading: treeQueries.some((q) => q.isLoading) };
 }
 
 /**
- * Resolved framework meta plus the skill tree, for every framework the learner holds
- * skills in.
+ * Name + group label for any skill code, across the given frameworks.
+ *
+ * `isLoading` is exposed so a page can hold a skeleton while names resolve, instead of flashing
+ * de-slugged codes ("dosage-calculation" -> "Dosage calculation") that then change under the
+ * learner. Once loaded, a code no framework knows still de-slugs - see `resolveSkillLabel`.
+ */
+export function useSkillLabels(frameworkIds: string[]): {
+  labelOf: (code: string, frameworkId?: string) => SkillLabel;
+  isLoading: boolean;
+} {
+  const { vocabularies, isLoading } = useSkillVocabularies(frameworkIds);
+  const labelOf = useCallback(
+    (code: string, frameworkId?: string) => resolveSkillLabel(Object.values(vocabularies), code, frameworkId),
+    [vocabularies]
+  );
+  return { labelOf, isLoading };
+}
+
+/**
+ * Resolved framework meta plus the skill tree, for every framework given.
  *
  * TWO READS PER FRAMEWORK, deliberately. The competency read gives tier labels, the flat
  * leaf list and each role's required set, but NO tree and NO display names - those live on
- * the taxonomy framework's nested terms. `useQueries` because the framework count is
- * data-dependent, mirroring `useMySkills`.
+ * the taxonomy framework's nested terms (see `useSkillVocabularies`). `useQueries` because the
+ * framework count is data-dependent.
  */
 export function useSkillFrameworks(frameworkIds: string[]): {
   metas: Record<string, CompetencyFrameworkMeta | undefined>;
@@ -116,14 +128,7 @@ export function useSkillFrameworks(frameworkIds: string[]): {
       enabled: Boolean(id),
     })),
   });
-
-  const treeQueries = useQueries({
-    queries: ids.map((id) => ({
-      queryKey: ['framework', id],
-      queryFn: () => frameworkService.read<TaxonomyFrameworkResponse>(id),
-      enabled: Boolean(id),
-    })),
-  });
+  const { vocabularies, isLoading: treeLoading } = useSkillVocabularies(ids);
 
   const metas = useMemo(() => {
     const out: Record<string, CompetencyFrameworkMeta | undefined> = {};
@@ -133,48 +138,17 @@ export function useSkillFrameworks(frameworkIds: string[]): {
     return out;
   }, [ids, metaQueries]);
 
-  const vocabularies = useMemo(() => {
-    const out: Record<string, SkillVocabulary | undefined> = {};
-    ids.forEach((id, i) => {
-      out[id] = buildSkillVocabulary(id, treeQueries[i]?.data?.data);
-    });
-    return out;
-  }, [ids, treeQueries]);
-
   return {
     metas,
     vocabularies,
-    isLoading: metaQueries.some((q) => q.isLoading) || treeQueries.some((q) => q.isLoading),
+    isLoading: metaQueries.some((q) => q.isLoading) || treeLoading,
   };
 }
 
 /**
- * Saves the learner's target roles.
- *
- * Best-effort: the gap is computed from the role passed explicitly, so a failed save costs
- * the learner their saved preference, not the readiness they are looking at. Only targets
- * are settable here - `currentRole` is stripped server-side.
- */
-export function useSaveTargetRole(frameworkId: string | undefined) {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (role: string) => {
-      if (!frameworkId) return;
-      await skillService.updateTargetRoles({ frameworkId, targetRoles: [role] });
-    },
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['skillGap'] });
-      void queryClient.invalidateQueries({ queryKey: ['skillRecommend'] });
-    },
-  });
-}
-
-
-/**
  * Admin assignment of a learner's current role.
  *
- * Separate from `useSaveTargetRole`, which is the learner setting their own aspiration. These are
- * different facts with different authorities: assigned vs aspired. Invalidates nothing on the
+ * An assignment from the organisation, not a learner preference. Invalidates nothing on the
  * admin's own caches - the learner's profile is not loaded here.
  */
 export function useAssignRole(): UseMutationResult<

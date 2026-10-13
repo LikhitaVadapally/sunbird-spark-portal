@@ -1,4 +1,8 @@
-import type { SkillIndexEntry } from './skillIndex';
+/** Anything that can be gained on a date - a My Skills entry, in practice. */
+export interface DatedSkill {
+  gained: boolean;
+  gainedAt?: number;
+}
 
 /** One point on the cumulative skills-gained trend — a day, and the running total through it. */
 export interface SkillGrowthPoint {
@@ -27,9 +31,9 @@ function dayLabel(timestamp: number): string {
  * Renders no points when fewer than two distinct days are represented: a
  * single-point "trend" would be noise, not a line.
  */
-export function buildSkillGrowthSeries(entries: SkillIndexEntry[]): SkillGrowthSeries {
+export function buildSkillGrowthSeries(entries: DatedSkill[]): SkillGrowthSeries {
   const dated = entries.filter(
-    (entry): entry is SkillIndexEntry & { gainedAt: number } => entry.gained && entry.gainedAt !== undefined
+    (entry): entry is DatedSkill & { gainedAt: number } => entry.gained && entry.gainedAt !== undefined
   );
   const undatedCount = entries.filter((entry) => entry.gained && entry.gainedAt === undefined).length;
 

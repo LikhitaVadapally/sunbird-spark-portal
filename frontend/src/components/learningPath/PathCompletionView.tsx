@@ -8,12 +8,18 @@ interface PathCompletionViewProps {
   pathTitle: string;
   levelCount: number;
   scores: ScoreRow[];
+  /** Names of the path's skills the learner HOLDS (skill profile) - never the whole scope. */
   skills: string[];
   hasCertificate: boolean;
   onDownload?: () => void;
 }
 
-/** Completion screen: stat cards, score rows, certificate card, skills-covered chips (design's `bDone`). */
+/**
+ * Completion screen: stat cards, score rows, certificate card, skills-gained chips (design's `bDone`).
+ *
+ * Lists only skills actually gained - finishing a path does not by itself prove every skill it
+ * scopes, and listing the whole scope here contradicted My Skills.
+ */
 export function PathCompletionView({ pathTitle, levelCount, scores, skills, hasCertificate, onDownload }: PathCompletionViewProps) {
   const { t } = useAppI18n();
 
@@ -48,10 +54,14 @@ export function PathCompletionView({ pathTitle, levelCount, scores, skills, hasC
           </div>
           <div className="rounded-xl border border-sunbird-gray-e5 bg-surface p-[1.375rem] shadow-sm">
             <span className="text-[0.6875rem] font-medium uppercase tracking-wider text-sunbird-gray-75">
-              {t('learningPath.skillsCovered')}
+              {t('mySkills.skillsGained')}
             </span>
             <div className="mt-3">
-              <SkillChips skills={skills} />
+              {skills.length > 0 ? (
+                <SkillChips skills={skills} />
+              ) : (
+                <p className="text-sm text-sunbird-gray-75">{t('learningPath.noSkillsYet')}</p>
+              )}
             </div>
           </div>
         </div>

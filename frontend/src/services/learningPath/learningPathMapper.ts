@@ -114,15 +114,17 @@ function displayable(codes: string[] | undefined): string[] {
  * all, holding genuine taxonomy labels rather than competency codes. Preferring `skill` covers the
  * competency case without dropping those.
  */
-function skillSource(node: { skill?: string[]; se_skills?: string[] }): string[] {
+export function skillSource(node: { skill?: string[]; se_skills?: string[] }): string[] {
   const own = (node.skill ?? []).filter(Boolean);
   return own.length > 0 ? own : (node.se_skills ?? []).filter(Boolean);
 }
 
 function mapCourseNode(courseNode: HierarchyContentNode): LPCourseNode {
   const leafIds = getLeafContentIdsFromHierarchy(courseNode);
-  const skillCodes = (courseNode.skill ?? []).filter(Boolean);
-  const skills = displayable(skillSource(courseNode));
+  // Codes follow the same `skill` -> `se_skills` preference as the display list, so a course
+  // carrying only the search-enriched copy still counts toward My Skills.
+  const skillCodes = skillSource(courseNode);
+  const skills = displayable(skillCodes);
   const isAssessment = isAssessmentCourse(courseNode, leafIds);
   return {
     identifier: courseNode.identifier,
@@ -141,8 +143,8 @@ function mapCourseNode(courseNode: HierarchyContentNode): LPCourseNode {
 
 function mapLevelNode(levelNode: HierarchyContentNode): LPLevelNode {
   const courses = (levelNode.children ?? []).map(mapCourseNode);
-  const ownCodes = (levelNode.skill ?? []).filter(Boolean);
-  const ownSkills = displayable(skillSource(levelNode));
+  const ownCodes = skillSource(levelNode);
+  const ownSkills = displayable(ownCodes);
   const skills = ownSkills.length > 0 ? ownSkills : unionSkills(...courses.map((c) => c.skills));
   return {
     identifier: levelNode.identifier,
@@ -151,6 +153,7 @@ function mapLevelNode(levelNode: HierarchyContentNode): LPLevelNode {
     description: levelNode.description,
     skills,
     skillCodes: ownCodes.length > 0 ? ownCodes : [...new Set(courses.flatMap((c) => c.skillCodes))],
+    ownSkillCodes: ownCodes,
     courses,
   };
 }
@@ -230,7 +233,9 @@ export function parseLearningPath(root: HierarchyContentNode | null | undefined)
     allSkills,
     allSkillCodes,
     targetRole: root.targetRole,
-    competencyFramework: root.competencyFramework,
+    // `framework` is the taxonomy framework the content's `skill` terms come from; it stands in
+    // for paths authored before `competencyFramework` existed, so their names still resolve.
+    competencyFramework: root.competencyFramework ?? root.framework,
     courseTotal,
     leafTotal: root.leafNodesCount ?? getLeafContentIdsFromHierarchy(root).length,
   };

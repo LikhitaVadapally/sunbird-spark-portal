@@ -1,7 +1,10 @@
 import { FiCheck } from 'react-icons/fi';
 
 interface SkillTagProps {
+  /** The skill's identity (its code) - what `onSelect` reports. */
   skill: string;
+  /** What the learner reads; defaults to `skill`. */
+  label?: string;
   gained: boolean;
   selected: boolean;
   dimmed?: boolean;
@@ -12,7 +15,7 @@ interface SkillTagProps {
 }
 
 /** An interactive skill tag: celebratory when gained, muted when still pending, highlighted when selected. */
-export function SkillTag({ skill, gained, selected, dimmed, index = 0, size = 'md', onSelect }: SkillTagProps) {
+export function SkillTag({ skill, label, gained, selected, dimmed, index = 0, size = 'md', onSelect }: SkillTagProps) {
   const sizeClass = size === 'sm' ? 'px-2.5 py-1 text-xs' : 'px-3 py-1.5 text-sm';
 
   const toneClass = gained
@@ -35,7 +38,7 @@ export function SkillTag({ skill, gained, selected, dimmed, index = 0, size = 'm
           <FiCheck className="h-2.5 w-2.5" />
         </span>
       )}
-      {skill}
+      {label ?? skill}
     </button>
   );
 }

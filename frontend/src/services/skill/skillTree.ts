@@ -163,6 +163,42 @@ export function skillName(vocabulary: SkillVocabulary | undefined, code: string)
   return words.charAt(0).toUpperCase() + words.slice(1);
 }
 
+/** A skill as the learner sees it: its name and the term it sits under. */
+export interface SkillLabel {
+  name: string;
+  /** Name of the leaf's parent term ("Infection Prevention"); undefined when the tree does not place it. */
+  group?: string;
+  /** False when no framework knew the code and `name` is only a de-slugged guess. */
+  resolved: boolean;
+}
+
+/** The name of a leaf's immediate parent term - the small group label on a skill card. */
+export function skillGroupName(vocabulary: SkillVocabulary | undefined, code: string): string | undefined {
+  const path = vocabulary?.leaves[code]?.path;
+  return path && path.length > 0 ? path[path.length - 1]?.name : undefined;
+}
+
+/**
+ * Name and group for a code, looked up across every loaded framework.
+ *
+ * Skills are keyed by CODE everywhere, but a code reaches a page from several places - the
+ * profile (which names its framework), a path hierarchy (which may not), a course tag (which
+ * never does). So the preferred framework is tried first, then any framework whose tree holds
+ * the code as a leaf, then any that merely labels it. Only when none does is it de-slugged.
+ */
+export function resolveSkillLabel(
+  vocabularies: Array<SkillVocabulary | undefined>,
+  code: string,
+  preferredFrameworkId?: string
+): SkillLabel {
+  const loaded = vocabularies.filter((v): v is SkillVocabulary => Boolean(v));
+  const preferred = loaded.find((v) => v.frameworkId === preferredFrameworkId && v.labels[code]);
+  const vocab = preferred ?? loaded.find((v) => v.leaves[code]) ?? loaded.find((v) => v.labels[code]);
+  if (!vocab) return { name: skillName(undefined, code), resolved: false };
+  const group = skillGroupName(vocab, code);
+  return { name: skillName(vocab, code), ...(group ? { group } : {}), resolved: true };
+}
+
 /** True when at least one skill resolved to a tier, i.e. grouping is meaningful. */
 export function isGrouped(groups: TierGroup[]): boolean {
   return groups.some((g) => g.tierCode !== '');

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { computePathSkills } from './pathSkillStatus';
+import { computePathSkills, computeRoleReadiness } from './pathSkillStatus';
 import type { LearningPathModel, LPCourseNode } from '@/types/learningPathTypes';
 
 const course = (id: string, codes: string[]): LPCourseNode => ({
@@ -19,60 +19,39 @@ const m = model(
 );
 
 describe('computePathSkills', () => {
-  it('reports a skill as held when the learner holds it', () => {
-    const r = computePathSkills(m, new Set(['hand-hygiene']), new Map());
+  it('reports a skill as held when the profile holds it, from any source', () => {
+    const r = computePathSkills(m, new Set(['hand-hygiene']), new Set());
     expect(r.skills.find((s) => s.code === 'hand-hygiene')?.state).toBe('held');
-  });
-
-  // The point of the whole thing: partway through a course, its skills must not read "not started".
-  it('reports in-progress with the teaching course percentage', () => {
-    const r = computePathSkills(m, new Set(), new Map([['c1', { percent: 50 }]]));
-    const s = r.skills.find((x) => x.code === 'dosage-calculation');
-    expect(s?.state).toBe('inProgress');
-    expect(s?.percent).toBe(50);
-  });
-
-  it('leaves an untouched skill as not started', () => {
-    const r = computePathSkills(m, new Set(), new Map([['c1', { percent: 50 }]]));
-    expect(r.skills.find((s) => s.code === 'hand-hygiene')?.state).toBe('notStarted');
-  });
-
-  // Held always wins: a completed course should not report its skills as 99% in progress.
-  it('prefers held over in-progress', () => {
-    const r = computePathSkills(m, new Set(['dosage-calculation']), new Map([['c1', { percent: 60 }]]));
-    expect(r.skills.find((s) => s.code === 'dosage-calculation')?.state).toBe('held');
-  });
-
-  it('takes the best route when two courses teach the same skill', () => {
-    const two = model(
-      [course('c1', ['hand-hygiene']), course('c2', ['hand-hygiene'])], ['hand-hygiene']
-    );
-    const r = computePathSkills(two, new Set(), new Map([['c1', { percent: 20 }], ['c2', { percent: 80 }]]));
-    expect(r.skills[0]?.percent).toBe(80);
-  });
-
-  // A role skill this path never teaches must still be listed, or readiness looks better than it is.
-  it('lists a required skill the path does not teach, and flags it', () => {
-    const r = computePathSkills(m, new Set(), new Map(), [
-      'dosage-calculation', 'hmis-reporting',
-    ]);
-    const missing = r.skills.find((s) => s.code === 'hmis-reporting');
-    expect(missing?.notTaught).toBe(true);
-    expect(r.required).toBe(2);
-  });
-
-  it('computes readiness against the role requirement, not the path contents', () => {
-    const r = computePathSkills(m, new Set(['dosage-calculation']), new Map(), [
-      'dosage-calculation', 'hmis-reporting',
-    ]);
     expect(r.held).toBe(1);
-    expect(r.readiness).toBe(50);
   });
 
-  it('falls back to the path contents when there is no target role', () => {
-    const r = computePathSkills(m, new Set(['hand-hygiene']), new Map());
-    expect(r.required).toBe(3);
-    expect(r.held).toBe(1);
-    expect(r.readiness).toBe(33);
+  it('reports skills on unfinished courses as pending', () => {
+    const r = computePathSkills(m, new Set(), new Set());
+    expect(r.skills.map((s) => s.state)).toEqual(['pending', 'pending', 'pending']);
+    expect(r.total).toBe(3);
+  });
+
+  // The profile is the truth for "gained": finishing a course does not by itself grant its skills.
+  it('leaves out a finished course skill the profile does not record', () => {
+    const r = computePathSkills(m, new Set(), new Set(['c1']));
+    expect(r.skills.map((s) => s.code)).toEqual(['hand-hygiene']);
+  });
+
+  it('lists held skills before pending ones', () => {
+    const r = computePathSkills(m, new Set(['iv-administration']), new Set());
+    expect(r.skills[0]).toEqual({ code: 'iv-administration', state: 'held' });
   });
 });
+
+describe('computeRoleReadiness', () => {
+  it('is undefined while the role has no skills mapped', () => {
+    expect(computeRoleReadiness(undefined, new Set(['a']), ['a'])).toBeUndefined();
+    expect(computeRoleReadiness([], new Set(['a']), ['a'])).toBeUndefined();
+  });
+
+  it('counts required skills held from any source, and flags ones the path does not teach', () => {
+    const r = computeRoleReadiness(['a', 'b', 'c', 'd'], new Set(['a', 'd']), ['a', 'b']);
+    expect(r).toEqual({ held: 2, required: 4, readiness: 50, notTaught: ['c'] });
+  });
+});
+

@@ -5,6 +5,8 @@ import {
   frameworkCategories,
   skillName,
   isGrouped,
+  skillGroupName,
+  resolveSkillLabel,
 } from './skillTree';
 import type { HeldSkill } from '../../types/skillServiceTypes';
 
@@ -238,5 +240,39 @@ describe('skillName', () => {
   it('returns the input for an empty or separator-only code', () => {
     expect(skillName(vocab, '')).toBe('');
     expect(skillName(vocab, '--')).toBe('--');
+  });
+});
+
+describe('skillGroupName', () => {
+  const vocab = buildSkillVocabulary('fw', threeTier);
+
+  it("returns the leaf's immediate parent term", () => {
+    expect(skillGroupName(vocab, 'dosage-calculation')).toBe('Medication Administration');
+  });
+
+  it('returns undefined for a code the tree does not place', () => {
+    expect(skillGroupName(vocab, 'unknown')).toBeUndefined();
+    expect(skillGroupName(undefined, 'dosage-calculation')).toBeUndefined();
+  });
+});
+
+describe('resolveSkillLabel', () => {
+  const vocab = buildSkillVocabulary('fw', threeTier);
+  const empty = buildSkillVocabulary('other_fw', undefined);
+
+  it('finds the name and group in whichever framework holds the code', () => {
+    expect(resolveSkillLabel([empty, vocab], 'dosage-calculation')).toEqual({
+      name: 'Dosage Calculation',
+      group: 'Medication Administration',
+      resolved: true,
+    });
+  });
+
+  it('prefers the named framework', () => {
+    expect(resolveSkillLabel([vocab], 'dosage-calculation', 'fw').resolved).toBe(true);
+  });
+
+  it('de-slugs, unresolved, when no framework knows the code', () => {
+    expect(resolveSkillLabel([empty, undefined], 'hand-hygiene')).toEqual({ name: 'Hand hygiene', resolved: false });
   });
 });

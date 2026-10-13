@@ -1,4 +1,3 @@
-import { useCallback } from 'react';
 import { useParams, useNavigate, useLocation, Navigate } from 'react-router-dom';
 import { useAppI18n } from '@/hooks/useAppI18n';
 import { useLearningPath } from '@/hooks/useLearningPath';
@@ -42,10 +41,8 @@ const LearningPathPage = () => {
   // Computed once for the whole page so the overview card and every level card agree, and the
   // profile is fetched once rather than per level.
   const pathSkills = usePathSkills(model, lp.summaryByCollectionId, pathSummary);
-  const skillStateOf = useCallback(
-    (code: string) => pathSkills.summary?.skills.find((s) => s.code === code),
-    [pathSkills.summary]
-  );
+  // Resolved names where the path carries codes; older paths only have display labels.
+  const scopedSkillNames = model.allSkillCodes.length > 0 ? model.allSkillCodes.map(pathSkills.name) : model.allSkills;
 
   // Durable local scores (survive the `['viewerSummary']` refetch that wipes
   // `pathSummary.assessmentStatus`) - merged with the path record below via
@@ -112,7 +109,7 @@ const LearningPathPage = () => {
           variant="prior"
           assessment={model.priorAssessment}
           policy={policy}
-          allSkills={model.allSkills}
+          allSkills={scopedSkillNames}
           bestScore={getPriorScore()}
           onStart={() => openCourse(model.priorAssessment!.identifier, model.priorAssessment!.leafIds[0] ?? '')}
           onSkip={goOverview}
@@ -134,7 +131,7 @@ const LearningPathPage = () => {
         <AssessmentGate
           variant="outcome"
           assessment={model.outcomeAssessment}
-          allSkills={model.allSkills}
+          allSkills={scopedSkillNames}
           bestScore={getOutcomeScore()}
           onStart={() => openCourse(model.outcomeAssessment!.identifier, model.outcomeAssessment!.leafIds[0] ?? '')}
           onBack={goOverview}
@@ -169,7 +166,7 @@ const LearningPathPage = () => {
           pathTitle={model.name}
           levelCount={model.levels.length}
           scores={scores}
-          skills={model.allSkills}
+          skills={(pathSkills.summary?.skills ?? []).filter((s) => s.state === 'held').map((s) => pathSkills.name(s.code))}
           hasCertificate={(pathSummary?.issuedCertificates?.length ?? 0) > 0}
         />
       </div>
@@ -177,7 +174,7 @@ const LearningPathPage = () => {
   }
 
   if (location.pathname.endsWith('/status')) {
-    return <LearningPathStatusView lp={lp} pathLink={basePath} />;
+    return <LearningPathStatusView lp={lp} pathLink={basePath} pathSkills={pathSkills} />;
   }
 
   if (levelId) {
@@ -194,7 +191,7 @@ const LearningPathPage = () => {
             summaryByCollectionId={lp.summaryByCollectionId}
             pathSummary={pathSummary}
             isEnrolled={enrollment.isEnrolled}
-            stateOf={enrollment.isEnrolled ? skillStateOf : undefined}
+            stateOf={enrollment.isEnrolled ? pathSkills.stateOf : undefined}
             skillName={pathSkills.name}
             onBack={goOverview}
             onOpenCourse={openCourse}

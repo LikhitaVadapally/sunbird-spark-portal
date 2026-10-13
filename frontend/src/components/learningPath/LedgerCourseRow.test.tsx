@@ -79,7 +79,7 @@ describe('LedgerCourseRow isEnrolled', () => {
   // An "Optional" badge alone gives no reason. Naming the skills the learner already holds turns
   // the label into an explanation of WHY the entry assessment waived it.
   it('explains a waived course by naming the skills already held', () => {
-    const held = (c: string) => ({ code: c, state: 'held' as const, percent: 0, notTaught: false });
+    const held = (c: string) => ({ code: c, state: 'held' as const });
     render(
       <LedgerCourseRow
         course={{ ...buildCourse(), skillCodes: ['hand-hygiene', 'ppe-use'] }}

@@ -66,10 +66,25 @@ const lp = {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
 } as any;
 
+const pathSkills = {
+  summary: {
+    skills: [
+      { code: 'Python Programming', state: 'held' as const },
+      { code: 'System Design', state: 'pending' as const },
+    ],
+    held: 1,
+    total: 2,
+  },
+  heldCodes: new Set(['Python Programming']),
+  stateOf: () => undefined,
+  name: (code: string) => code,
+  isLoading: false,
+};
+
 createRoot(document.getElementById('root')!).render(
   <MemoryRouter>
     <div className="min-h-screen bg-[hsl(var(--sunbird-beige-light))] font-rubik">
-      <LearningPathStatusView lp={lp} pathLink="/learning-path/lp1" />
+      <LearningPathStatusView lp={lp} pathLink="/learning-path/lp1" pathSkills={pathSkills} />
     </div>
   </MemoryRouter>
 );

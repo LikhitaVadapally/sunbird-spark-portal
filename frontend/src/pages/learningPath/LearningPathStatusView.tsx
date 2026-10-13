@@ -4,8 +4,9 @@ import { LearningPathGoBackButton } from '@/components/learningPath/LearningPath
 import { StatusHero } from '@/components/learningPath/status/StatusHero';
 import { SkillCelebrationPanel } from '@/components/learningPath/status/SkillCelebrationPanel';
 import { StatusTimeline } from '@/components/learningPath/status/StatusTimeline';
-import { getAttainedLevels, getGainedSkills } from '@/services/learningPath/skillAttainment';
+import { getAttainedLevels } from '@/services/learningPath/skillAttainment';
 import type { useLearningPath } from '@/hooks/useLearningPath';
+import type { UsePathSkillsResult } from '@/hooks/usePathSkills';
 
 type LearningPathData = ReturnType<typeof useLearningPath>;
 
@@ -13,6 +14,8 @@ interface LearningPathStatusViewProps {
   lp: LearningPathData;
   /** Route to the Learning Path itself — the only navigation this read-only page offers. */
   pathLink: string;
+  /** Gained/pending by the My Skills rule - computed once by the page so every view agrees. */
+  pathSkills: UsePathSkillsResult;
 }
 
 /**
@@ -20,7 +23,7 @@ interface LearningPathStatusViewProps {
  * expandable regardless of the path's unlock policy, and no row launches content —
  * learners head back into the path through the single link in the hero.
  */
-export function LearningPathStatusView({ lp, pathLink }: LearningPathStatusViewProps) {
+export function LearningPathStatusView({ lp, pathLink, pathSkills }: LearningPathStatusViewProps) {
   const { t } = useAppI18n();
   const {
     model,
@@ -37,11 +40,9 @@ export function LearningPathStatusView({ lp, pathLink }: LearningPathStatusViewP
     () => getAttainedLevels(levelProgress, levelStatuses),
     [levelProgress, levelStatuses]
   );
-  const gainedSkills = useMemo(() => getGainedSkills(model.levels, attainedLevels), [model.levels, attainedLevels]);
-  const gainedCount = useMemo(
-    () => model.allSkills.filter((skill) => gainedSkills.has(skill)).length,
-    [model.allSkills, gainedSkills]
-  );
+  // Skills are CODES here, gained from the skill profile - the same numbers My Skills shows.
+  const pathSkillCodes = useMemo(() => (pathSkills.summary?.skills ?? []).map((s) => s.code), [pathSkills.summary]);
+  const gainedCount = pathSkills.summary?.held ?? 0;
 
   // Every level starts open: this page is a summary, not a navigation tree.
   const [collapsedLevelIds, setCollapsedLevelIds] = useState<Set<string>>(() => new Set());
@@ -81,15 +82,16 @@ export function LearningPathStatusView({ lp, pathLink }: LearningPathStatusViewP
             pathName={model.name}
             progress={progress}
             gainedCount={gainedCount}
-            skillTotal={model.allSkills.length}
+            skillTotal={pathSkillCodes.length}
             pathLink={pathLink}
           />
         </div>
 
         <div className="flex flex-col gap-5">
           <SkillCelebrationPanel
-            allSkills={model.allSkills}
-            gainedSkills={gainedSkills}
+            allSkills={pathSkillCodes}
+            gainedSkills={pathSkills.heldCodes}
+            nameOf={pathSkills.name}
             selectedSkill={selectedSkill}
             onSelectSkill={selectSkill}
             onClearSkill={() => setSelectedSkill(null)}
@@ -104,7 +106,8 @@ export function LearningPathStatusView({ lp, pathLink }: LearningPathStatusViewP
               levels={model.levels}
               attainedLevels={attainedLevels}
               levelProgress={levelProgress}
-              gainedSkills={gainedSkills}
+              gainedSkills={pathSkills.heldCodes}
+              nameOf={pathSkills.name}
               selectedSkill={selectedSkill}
               expandedLevelIds={expandedLevelIds}
               summaryByCollectionId={summaryByCollectionId}

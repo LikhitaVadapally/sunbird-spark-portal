@@ -27,6 +27,12 @@ vi.mock('@/components/common/PageLoader', () => ({
   ),
 }));
 
+vi.mock('./CourseSkillsSection', () => ({
+  CourseSkillsSection: ({ codes, frameworkId }: { codes: string[]; frameworkId?: string }) => (
+    <div data-testid="course-skills" data-framework={frameworkId ?? ''}>{codes.join(',')}</div>
+  ),
+}));
+
 const mockCollectionData: CollectionData = {
   id: 'col-1',
   title: 'Test Course Title',
@@ -266,6 +272,23 @@ describe('CollectionOverview', () => {
       render(<CollectionOverview collectionData={mockCollectionData} />);
       expect(screen.getByText('courseDetails.collectionOverview')).toBeInTheDocument();
       expect(screen.getByText(mockCollectionData.description)).toBeInTheDocument();
+    });
+  });
+
+  describe('skills you will learn', () => {
+    it('is hidden when the course carries no skills', () => {
+      render(<CollectionOverview collectionData={mockCollectionData} />);
+      expect(screen.queryByTestId('course-skills')).not.toBeInTheDocument();
+    });
+
+    it("lists the course's skill codes, falling back to se_skills, with its framework", () => {
+      const withSkills: CollectionData = {
+        ...mockCollectionData,
+        hierarchyRoot: { ...mockCollectionData.hierarchyRoot, se_skills: ['hand-hygiene'], framework: 'nursing_fw' },
+      };
+      render(<CollectionOverview collectionData={withSkills} />);
+      expect(screen.getByTestId('course-skills')).toHaveTextContent('hand-hygiene');
+      expect(screen.getByTestId('course-skills')).toHaveAttribute('data-framework', 'nursing_fw');
     });
   });
 });

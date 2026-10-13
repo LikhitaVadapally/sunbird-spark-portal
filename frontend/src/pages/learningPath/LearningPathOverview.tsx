@@ -69,12 +69,7 @@ export function LearningPathOverview({
 
       {enrollment.isEnrolled && pathSkills.summary && (
         <div className="mb-4">
-          <PathSkillProgressCard
-            summary={pathSkills.summary}
-            name={pathSkills.name}
-            roleName={pathSkills.roleName}
-            hasRole={Boolean(pathSkills.targetRole)}
-          />
+          <PathSkillProgressCard summary={pathSkills.summary} name={pathSkills.name} role={pathSkills.role} />
         </div>
       )}
 
@@ -86,7 +81,7 @@ export function LearningPathOverview({
             </p>
           ) : (
             <LedgerTable
-              stateOf={enrollment.isEnrolled ? ((c: string) => pathSkills.summary?.skills.find((x) => x.code === c)) : undefined}
+              stateOf={enrollment.isEnrolled ? pathSkills.stateOf : undefined}
               skillName={pathSkills.name}
               model={model}
               levelProgress={levelProgress}

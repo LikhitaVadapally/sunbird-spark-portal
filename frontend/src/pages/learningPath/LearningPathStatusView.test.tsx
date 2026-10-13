@@ -3,6 +3,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { LearningPathStatusView } from './LearningPathStatusView';
 import type { LPLevelNode } from '@/types/learningPathTypes';
+import type { UsePathSkillsResult } from '@/hooks/usePathSkills';
 
 vi.mock('@/hooks/useAppI18n', () => ({
   useAppI18n: () => ({ t: (key: string) => key }),
@@ -12,7 +13,7 @@ const level1: LPLevelNode = {
   identifier: 'level_1',
   name: 'Foundations',
   index: 1,
-  skills: ['SQL'], skillCodes: [],
+  skills: ['SQL'], skillCodes: ['sql'],
   courses: [
     { identifier: 'course_1', name: 'Intro to SQL', leafNodesCount: 1, leafIds: ['res_1'], skills: [], skillCodes: [], isAssessmentCourse: false },
   ],
@@ -22,7 +23,7 @@ const level2: LPLevelNode = {
   identifier: 'level_2',
   name: 'Advanced',
   index: 2,
-  skills: ['Python'], skillCodes: [],
+  skills: ['Python'], skillCodes: ['python'],
   courses: [],
 };
 
@@ -51,10 +52,28 @@ function buildLp(overrides: Partial<Record<string, unknown>> = {}) {
   } as any;
 }
 
-function renderView(lp = buildLp()) {
+const NAMES: Record<string, string> = { sql: 'SQL', python: 'Python' };
+
+/** Gained comes from the skill profile, not from level completion - so it is passed in. */
+function buildPathSkills(held: string[] = ['sql']): UsePathSkillsResult {
+  const heldCodes = new Set(held);
+  const skills = ['sql', 'python'].map((code) => ({
+    code,
+    state: heldCodes.has(code) ? ('held' as const) : ('pending' as const),
+  }));
+  return {
+    summary: { skills, held: held.length, total: skills.length },
+    heldCodes,
+    stateOf: (code) => skills.find((s) => s.code === code),
+    name: (code) => NAMES[code] ?? code,
+    isLoading: false,
+  };
+}
+
+function renderView(lp = buildLp(), pathSkills = buildPathSkills()) {
   return render(
     <MemoryRouter>
-      <LearningPathStatusView lp={lp} pathLink="/learning-path/lp1/batch/b1" />
+      <LearningPathStatusView lp={lp} pathLink="/learning-path/lp1/batch/b1" pathSkills={pathSkills} />
     </MemoryRouter>
   );
 }
@@ -117,16 +136,15 @@ describe('LearningPathStatusView', () => {
   });
 
   it('celebrates once every scoped skill is gained', () => {
-    renderView(
-      buildLp({
-        levelProgress: [
-          { pct: 100, completed: 1, total: 1, doneCourses: 1 },
-          { pct: 100, completed: 1, total: 1, doneCourses: 1 },
-        ],
-        levelStatuses: ['completed', 'completed'],
-      })
-    );
+    renderView(buildLp(), buildPathSkills(['sql', 'python']));
     expect(screen.getByText('learningPath.allSkillsGained')).toBeInTheDocument();
+  });
+
+  // Gained follows the skill profile: a level at 100% does not by itself mark its skills gained.
+  it('does not count a completed level\'s skills as gained when the profile lacks them', () => {
+    renderView(buildLp(), buildPathSkills([]));
+    const panel = screen.getByTestId('skill-panel');
+    expect(panel.querySelector('[data-testid="skill-chip-gained"]')).toBeNull();
   });
 
   it("shows the viewer note for a mentor viewing another learner's status", () => {

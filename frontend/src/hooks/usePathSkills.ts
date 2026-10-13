@@ -1,83 +1,87 @@
-import { useMemo } from 'react';
-import { useSkillProfile, useSkillFrameworks } from './useSkillProfile';
-import { computeCourseProgress } from '@/services/learningPath/learningPathProgress';
-import { computePathSkills, type PathSkillSummary } from '@/services/learningPath/pathSkillStatus';
-import { skillName } from '@/services/skill';
+import { useCallback, useMemo } from 'react';
+import { useSkillFrameworks, useSkillLabels, useSkillProfile } from './useSkillProfile';
+import { getFinishedCourseIds } from '@/services/learningPath/skillAggregation';
+import {
+  computePathSkills,
+  computeRoleReadiness,
+  type PathSkill,
+  type PathSkillSummary,
+  type RoleReadiness,
+} from '@/services/learningPath/pathSkillStatus';
+import { heldCodeSet } from '@/services/skill/mySkills';
 import type { LearningPathModel } from '@/types/learningPathTypes';
 import type { ViewerSummaryRecord } from '@/types/viewerServiceTypes';
 
 export interface UsePathSkillsResult {
   summary: PathSkillSummary | undefined;
-  /** Display name for a leaf code, from the framework; de-slugs when the framework lacks it. */
+  /** Codes held from any source - the same "gained" set My Skills uses. */
+  heldCodes: ReadonlySet<string>;
+  /** State of one code on this path; undefined for a code outside the gained/pending sets. */
+  stateOf: (code: string) => PathSkill | undefined;
+  /** Display name for a leaf code, from the framework; de-slugs when no framework knows it. */
   name: (code: string) => string;
-  /** The role this path is built for, when it declares one. */
-  targetRole?: string;
-  roleName: string;
+  /**
+   * Readiness for the role this path is built for. Undefined until the path declares a
+   * `targetRole` AND the framework maps skills to it - so it stays hidden while roles are deferred.
+   */
+  role?: { code: string; name: string } & RoleReadiness;
   isLoading: boolean;
 }
 
 /**
- * Skill progress for the path the learner is currently on.
+ * Skill progress for the path the learner is currently on, by the same rule as My Skills:
+ * gained = in the skill profile (any source, any framework - codes are the key), pending = still
+ * on a course here the learner has not finished.
  *
- * Scoped to the path's OWN framework. A learner may hold skills from several frameworks, and
- * counting those toward this programme would overstate readiness - the codes are only comparable
- * within one framework.
- *
- * Requirements come from the framework's role definition rather than from `gap/read`, because the
- * card needs the full required SET to render each skill's state, not just the outstanding count.
- * When the path declares no `targetRole`, it falls back to the path's own skills, which still
- * answers "what does this programme give me, and how far am I".
+ * Not scoped to the path's framework any more. A skill earned from a standalone course or an
+ * external certificate is held all the same, and filtering by framework made this page disagree
+ * with My Skills. The framework is used for names only.
  */
 export function usePathSkills(
   model: LearningPathModel,
   summaryByCollectionId: Map<string, ViewerSummaryRecord>,
   pathSummary?: ViewerSummaryRecord
 ): UsePathSkillsResult {
-  const frameworkId = model.competencyFramework;
-  const { skills, isLoading: profileLoading } = useSkillProfile();
-  const ids = useMemo(() => (frameworkId ? [frameworkId] : []), [frameworkId]);
-  const { metas, vocabularies, isLoading: fwLoading } = useSkillFrameworks(ids);
+  const { skills, frameworkIds, isLoading: profileLoading } = useSkillProfile();
+  const ids = useMemo(
+    () => [...(model.competencyFramework ? [model.competencyFramework] : []), ...frameworkIds],
+    [model.competencyFramework, frameworkIds]
+  );
+  const { labelOf, isLoading: labelsLoading } = useSkillLabels(ids);
 
-  const vocab = frameworkId ? vocabularies[frameworkId] : undefined;
-  const meta = frameworkId ? metas[frameworkId] : undefined;
-
-  const heldCodes = useMemo(
-    () => new Set(skills.filter((s) => s.frameworkId === frameworkId).map((s) => s.skillId)),
-    [skills, frameworkId]
+  const heldCodes = useMemo(() => heldCodeSet(skills), [skills]);
+  const finishedCourseIds = useMemo(
+    () => getFinishedCourseIds(model, pathSummary, summaryByCollectionId),
+    [model, pathSummary, summaryByCollectionId]
   );
 
-  const courseProgress = useMemo(() => {
-    const m = new Map<string, { percent: number }>();
-    model.levels.forEach((level) =>
-      level.courses.forEach((course) => {
-        m.set(course.identifier, {
-          percent: computeCourseProgress(course, summaryByCollectionId, pathSummary).pct,
-        });
-      })
-    );
-    return m;
-  }, [model, summaryByCollectionId, pathSummary]);
+  const summary = useMemo(() => {
+    const result = computePathSkills(model, heldCodes, finishedCourseIds);
+    return result.total === 0 ? undefined : result;
+  }, [model, heldCodes, finishedCourseIds]);
 
-  const required = model.targetRole ? meta?.roles?.[model.targetRole] : undefined;
+  // The competency read (roles) only when the path names a role: a learner on a role-less path
+  // never pays for it.
+  const roleFrameworkIds = useMemo(
+    () => (model.targetRole && model.competencyFramework ? [model.competencyFramework] : []),
+    [model.targetRole, model.competencyFramework]
+  );
+  const { metas, isLoading: roleLoading } = useSkillFrameworks(roleFrameworkIds);
+  const meta = model.competencyFramework ? metas[model.competencyFramework] : undefined;
 
-  const summary = useMemo(
-    () =>
-      model.allSkillCodes.length === 0 && !required
-        ? undefined
-        : computePathSkills(model, heldCodes, courseProgress, required),
-    [model, heldCodes, courseProgress, required]
+  const role = useMemo(() => {
+    const code = model.targetRole;
+    const readiness = code ? computeRoleReadiness(meta?.roles?.[code], heldCodes, model.allSkillCodes) : undefined;
+    if (!code || !readiness) return undefined;
+    // The authored name wins; de-slug only for a role with no name on record.
+    return { code, name: meta?.roleNames?.[code] ?? labelOf(code, model.competencyFramework).name, ...readiness };
+  }, [model.targetRole, model.allSkillCodes, model.competencyFramework, meta, heldCodes, labelOf]);
+
+  const stateOf = useCallback((code: string) => summary?.skills.find((s) => s.code === code), [summary]);
+  const name = useCallback(
+    (code: string) => labelOf(code, model.competencyFramework).name,
+    [labelOf, model.competencyFramework]
   );
 
-  return {
-    summary,
-    name: (code: string) => skillName(vocab, code),
-    targetRole: model.targetRole,
-    // The authored name wins. A code is not a display string: de-slugging turns
-    // "staff-nurse-icu" into "Staff nurse icu", losing the capitalisation and punctuation the
-    // author wrote. Falls back to de-slugging only for a role with no name on record.
-    roleName: model.targetRole
-      ? (meta?.roleNames?.[model.targetRole] ?? skillName(vocab, model.targetRole))
-      : '',
-    isLoading: profileLoading || fwLoading,
-  };
+  return { summary, heldCodes, stateOf, name, role, isLoading: profileLoading || labelsLoading || roleLoading };
 }

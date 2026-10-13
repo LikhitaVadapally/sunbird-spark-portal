@@ -3,11 +3,15 @@ import { FiArrowRight, FiChevronDown, FiChevronUp } from 'react-icons/fi';
 import { useAppI18n } from '@/hooks/useAppI18n';
 import { SkillTag } from '@/components/learningPath/status/SkillTag';
 import { getLearningPathStatusPath } from '@/utils/getContentDetailPath';
+import { splitPathSkills } from '@/services/learningPath/skillAggregation';
 import type { PathSkillSummary, PathSkillStatus } from '@/services/learningPath/skillAggregation';
 
 interface SkillPathAccordionProps {
   pathName: string;
   summary?: PathSkillSummary;
+  /** Codes held from any source - so this card counts exactly what My Skills counts. */
+  heldCodes: ReadonlySet<string>;
+  nameOf: (code: string, frameworkId?: string) => string;
   isLoading: boolean;
   isExpanded: boolean;
   onToggle: () => void;
@@ -20,7 +24,15 @@ const STATUS_TONE: Record<PathSkillStatus, string> = {
 };
 
 /** One enrolled Learning Path: a collapsed summary row that expands into its gained/pending skills. */
-export function SkillPathAccordion({ pathName, summary, isLoading, isExpanded, onToggle }: SkillPathAccordionProps) {
+export function SkillPathAccordion({
+  pathName,
+  summary,
+  heldCodes,
+  nameOf,
+  isLoading,
+  isExpanded,
+  onToggle,
+}: SkillPathAccordionProps) {
   const { t } = useAppI18n();
   const location = useLocation();
 
@@ -42,8 +54,9 @@ export function SkillPathAccordion({ pathName, summary, isLoading, isExpanded, o
     'not-started': t('status.notStarted'),
   };
 
-  const gained = summary.allSkills.filter((skill) => summary.gainedSkills.has(skill));
-  const pending = summary.allSkills.filter((skill) => !summary.gainedSkills.has(skill));
+  const { gained, pending } = splitPathSkills(summary, heldCodes);
+  const total = gained.length + pending.length;
+  const label = (code: string) => nameOf(code, summary.frameworkId);
 
   return (
     <div className="rounded-2xl border border-sunbird-gray-e5 bg-surface shadow-sm" data-testid="skill-path-accordion">
@@ -68,7 +81,7 @@ export function SkillPathAccordion({ pathName, summary, isLoading, isExpanded, o
               />
             </div>
             <span className="text-xs text-sunbird-gray-75">
-              {t('mySkills.gainedOfTotal', { gained: summary.gainedCount, total: summary.allSkills.length })}
+              {t('mySkills.gainedOfTotal', { gained: gained.length, total })}
             </span>
           </div>
         </div>
@@ -81,7 +94,7 @@ export function SkillPathAccordion({ pathName, summary, isLoading, isExpanded, o
 
       {isExpanded && (
         <div className="border-t border-sunbird-gray-e5 p-4">
-          {summary.allSkills.length === 0 ? (
+          {total === 0 ? (
             <p className="text-center text-sm text-sunbird-gray-75">{t('learningPath.noSkillsYet')}</p>
           ) : (
             <>
@@ -91,8 +104,8 @@ export function SkillPathAccordion({ pathName, summary, isLoading, isExpanded, o
                     {t('mySkills.skillsGainedSection', { count: gained.length })}
                   </span>
                   <div className="flex flex-wrap gap-2">
-                    {gained.map((skill) => (
-                      <SkillTag key={skill} skill={skill} gained selected={false} size="sm" onSelect={() => {}} />
+                    {gained.map((code) => (
+                      <SkillTag key={code} skill={code} label={label(code)} gained selected={false} size="sm" onSelect={() => {}} />
                     ))}
                   </div>
                 </div>
@@ -103,8 +116,16 @@ export function SkillPathAccordion({ pathName, summary, isLoading, isExpanded, o
                     {t('mySkills.skillsPendingSection', { count: pending.length })}
                   </span>
                   <div className="flex flex-wrap gap-2">
-                    {pending.map((skill) => (
-                      <SkillTag key={skill} skill={skill} gained={false} selected={false} size="sm" onSelect={() => {}} />
+                    {pending.map((code) => (
+                      <SkillTag
+                        key={code}
+                        skill={code}
+                        label={label(code)}
+                        gained={false}
+                        selected={false}
+                        size="sm"
+                        onSelect={() => {}}
+                      />
                     ))}
                   </div>
                 </div>

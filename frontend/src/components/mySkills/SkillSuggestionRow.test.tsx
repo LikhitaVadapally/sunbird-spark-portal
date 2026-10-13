@@ -24,7 +24,7 @@ function suggestion(overrides: Partial<SkillSuggestion> & { pathId: string }): S
 function renderRow(suggestions: SkillSuggestion[]) {
   return render(
     <MemoryRouter>
-      <SkillSuggestionRow suggestions={suggestions} />
+      <SkillSuggestionRow suggestions={suggestions} nameOf={(code) => code} />
     </MemoryRouter>
   );
 }
@@ -46,6 +46,19 @@ describe('SkillSuggestionRow', () => {
     expect(screen.getByText('SQL')).toBeInTheDocument();
     expect(screen.getByTestId('skill-suggestion-card-enrolled')).toBeInTheDocument();
     expect(screen.getByTestId('skill-suggestion-card-discover')).toBeInTheDocument();
+  });
+
+  it('shows resolved skill names rather than codes', () => {
+    render(
+      <MemoryRouter>
+        <SkillSuggestionRow
+          suggestions={[suggestion({ pathId: 'p1', newSkills: ['hand-hygiene'] })]}
+          nameOf={(code) => (code === 'hand-hygiene' ? 'Hand Hygiene' : code)}
+        />
+      </MemoryRouter>
+    );
+    expect(screen.getByText('Hand Hygiene')).toBeInTheDocument();
+    expect(screen.queryByText('hand-hygiene')).not.toBeInTheDocument();
   });
 
   it('collapses extra skills into a "+N more" label beyond the preview count', () => {
