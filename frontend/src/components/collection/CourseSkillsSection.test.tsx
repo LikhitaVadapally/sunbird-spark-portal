@@ -6,7 +6,9 @@ import { useSkillLabels, useSkillProfile } from '@/hooks/useSkillProfile';
 vi.mock('@/hooks/useAppI18n', () => ({ useAppI18n: () => ({ t: (key: string) => key }) }));
 vi.mock('@/hooks/useSkillProfile', () => ({ useSkillProfile: vi.fn(), useSkillLabels: vi.fn() }));
 
-const NAMES: Record<string, string> = { 'hand-hygiene': 'Hand Hygiene', 'ppe-use': 'PPE Use' };
+const NAMES: Record<string, string> = { 'hand-hygiene': 'Hand Hygiene', 'ppe-use': 'PPE Use', dv: 'Data Visualization' };
+// USF tags carry the term name; the profile holds the code.
+const CODE_BY_NAME: Record<string, string> = { 'data visualization': 'dv' };
 
 function setProfile(heldCodes: string[]) {
   vi.mocked(useSkillProfile).mockReturnValue({
@@ -21,6 +23,7 @@ function setProfile(heldCodes: string[]) {
 function setLabels(isLoading = false) {
   vi.mocked(useSkillLabels).mockReturnValue({
     labelOf: (code: string) => ({ name: NAMES[code] ?? code, resolved: Boolean(NAMES[code]) }),
+    codeOf: (tag: string) => CODE_BY_NAME[tag.toLowerCase()] ?? tag,
     isLoading,
   });
 }
@@ -43,6 +46,12 @@ describe('CourseSkillsSection', () => {
     render(<CourseSkillsSection codes={['hand-hygiene', 'ppe-use']} />);
     expect(screen.getByTestId('course-skill-held')).toHaveTextContent('PPE Use');
     expect(screen.getByTestId('course-skill')).toHaveTextContent('Hand Hygiene');
+  });
+
+  it('ticks a USF skill tagged by name once its code is held', () => {
+    setProfile(['dv']);
+    render(<CourseSkillsSection codes={['Data Visualization']} frameworkId="USF" />);
+    expect(screen.getByTestId('course-skill-held')).toHaveTextContent('Data Visualization');
   });
 
   it('shows placeholders, not slugs, while names load', () => {

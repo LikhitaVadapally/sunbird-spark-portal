@@ -5,7 +5,7 @@ import { useSkillLabels, useSkillProfile } from '@/hooks/useSkillProfile';
 import { heldCodeSet } from '@/services/skill/mySkills';
 
 interface CourseSkillsSectionProps {
-  /** The course's skill CODES (`skill`, falling back to `se_skills`). Render only when non-empty. */
+  /** The course's skill tags (`skill`, falling back to `se_skills`): codes, or USF names. Render only when non-empty. */
   codes: string[];
   /** Framework the codes belong to, when the course names one - for display names only. */
   frameworkId?: string;
@@ -23,7 +23,7 @@ export function CourseSkillsSection({ codes, frameworkId }: CourseSkillsSectionP
   const { skills, frameworkIds } = useSkillProfile();
   const held = useMemo(() => heldCodeSet(skills), [skills]);
   const ids = useMemo(() => [...(frameworkId ? [frameworkId] : []), ...frameworkIds], [frameworkId, frameworkIds]);
-  const { labelOf, isLoading } = useSkillLabels(ids);
+  const { labelOf, codeOf, isLoading } = useSkillLabels(ids);
 
   return (
     <div className="mb-6" data-testid="course-skills">
@@ -36,11 +36,13 @@ export function CourseSkillsSection({ codes, frameworkId }: CourseSkillsSectionP
         </div>
       ) : (
         <ul className="flex flex-wrap gap-2">
-          {codes.map((code) => {
+          {codes.map((tag) => {
+            // A USF course is tagged by name ("Data Visualization"); the profile holds the code.
+            const code = codeOf(tag, frameworkId);
             const isHeld = held.has(code);
             return (
               <li
-                key={code}
+                key={tag}
                 data-testid={isHeld ? 'course-skill-held' : 'course-skill'}
                 title={isHeld ? t('courseDetails.skillAlreadyHeld') : undefined}
                 className={`flex items-center gap-1.5 rounded-pill border px-3 py-1 text-sm ${

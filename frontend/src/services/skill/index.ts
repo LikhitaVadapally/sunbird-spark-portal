@@ -23,3 +23,5 @@ export {
   type TierGroup,
   type TaxonomyFrameworkResponse,
 } from './skillTree';
+
+export { toSkillCode, withSkillCodes, type CodeOf } from './skillCodes';

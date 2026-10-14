@@ -7,6 +7,8 @@ import {
   normaliseFrameworkMeta,
   buildSkillVocabulary,
   resolveSkillLabel,
+  toSkillCode,
+  type CodeOf,
   type SkillLabel,
   type SkillVocabulary,
   type TaxonomyFrameworkResponse,
@@ -96,6 +98,8 @@ export function useSkillVocabularies(frameworkIds: string[]): {
  */
 export function useSkillLabels(frameworkIds: string[]): {
   labelOf: (code: string, frameworkId?: string) => SkillLabel;
+  /** Content tag -> the code the profile stores; a USF name tag resolves to its code. */
+  codeOf: CodeOf;
   isLoading: boolean;
 } {
   const { vocabularies, isLoading } = useSkillVocabularies(frameworkIds);
@@ -103,7 +107,11 @@ export function useSkillLabels(frameworkIds: string[]): {
     (code: string, frameworkId?: string) => resolveSkillLabel(Object.values(vocabularies), code, frameworkId),
     [vocabularies]
   );
-  return { labelOf, isLoading };
+  const codeOf = useCallback(
+    (tag: string, frameworkId?: string) => toSkillCode(Object.values(vocabularies), tag, frameworkId),
+    [vocabularies]
+  );
+  return { labelOf, codeOf, isLoading };
 }
 
 /**

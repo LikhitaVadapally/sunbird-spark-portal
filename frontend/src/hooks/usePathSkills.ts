@@ -9,6 +9,7 @@ import {
   type RoleReadiness,
 } from '@/services/learningPath/pathSkillStatus';
 import { heldCodeSet } from '@/services/skill/mySkills';
+import { withSkillCodes } from '@/services/skill/skillCodes';
 import type { LearningPathModel } from '@/types/learningPathTypes';
 import type { ViewerSummaryRecord } from '@/types/viewerServiceTypes';
 
@@ -38,16 +39,18 @@ export interface UsePathSkillsResult {
  * with My Skills. The framework is used for names only.
  */
 export function usePathSkills(
-  model: LearningPathModel,
+  rawModel: LearningPathModel,
   summaryByCollectionId: Map<string, ViewerSummaryRecord>,
   pathSummary?: ViewerSummaryRecord
 ): UsePathSkillsResult {
   const { skills, frameworkIds, isLoading: profileLoading } = useSkillProfile();
   const ids = useMemo(
-    () => [...(model.competencyFramework ? [model.competencyFramework] : []), ...frameworkIds],
-    [model.competencyFramework, frameworkIds]
+    () => [...(rawModel.competencyFramework ? [rawModel.competencyFramework] : []), ...frameworkIds],
+    [rawModel.competencyFramework, frameworkIds]
   );
-  const { labelOf, isLoading: labelsLoading } = useSkillLabels(ids);
+  const { labelOf, codeOf, isLoading: labelsLoading } = useSkillLabels(ids);
+  // USF paths are tagged by skill NAME; the profile holds codes. Everything below matches on codes.
+  const model = useMemo(() => withSkillCodes(rawModel, codeOf), [rawModel, codeOf]);
 
   const heldCodes = useMemo(() => heldCodeSet(skills), [skills]);
   const finishedCourseIds = useMemo(

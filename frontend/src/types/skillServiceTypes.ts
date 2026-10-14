@@ -122,6 +122,8 @@ export interface SkillEvidence {
   evidenceId: string;
   sourceType: string;
   sourceId: string;
+  /** Display name of the source (a course's name), when the client knows it. */
+  sourceName?: string;
   score?: number;
   maxScore?: number;
   issuerId?: string;

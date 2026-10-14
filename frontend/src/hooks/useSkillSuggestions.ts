@@ -2,8 +2,10 @@ import { useMemo } from 'react';
 import { useQueries } from '@tanstack/react-query';
 import { useContentSearch } from './useContent';
 import { collectionHierarchyQueryOptions } from './useCollection';
+import { useSkillLabels } from './useSkillProfile';
 import { parseLearningPath } from '../services/learningPath/learningPathMapper';
 import { derivePathSkillCodes, splitPathSkills } from '../services/learningPath/skillAggregation';
+import { withSkillCodes } from '../services/skill/skillCodes';
 import type { PathSkillSummary } from '../services/learningPath/skillAggregation';
 import type { CollectionData } from '../types/collectionTypes';
 
@@ -84,14 +86,28 @@ export function useSkillSuggestions(
     queries: candidates.map((item) => collectionHierarchyQueryOptions(item.identifier)),
   });
 
+  const candidateModels = useMemo(
+    () =>
+      hierarchyQueries.map((query) => {
+        const root = (query?.data as CollectionData | null | undefined)?.hierarchyRoot;
+        return root ? parseLearningPath(root) : null;
+      }),
+    [hierarchyQueries]
+  );
+  const candidateFrameworkIds = useMemo(
+    () => candidateModels.map((m) => m?.competencyFramework).filter((id): id is string => Boolean(id)),
+    [candidateModels]
+  );
+  const { codeOf } = useSkillLabels(candidateFrameworkIds);
+
   const discoverSuggestions = useMemo(() => {
     return candidates
       .map((item, i): SkillSuggestion | null => {
-        const data = hierarchyQueries[i]?.data as CollectionData | null | undefined;
-        const hierarchyRoot = data?.hierarchyRoot;
-        if (!hierarchyRoot) return null;
+        const parsed = candidateModels[i];
+        if (!parsed) return null;
 
-        const model = parseLearningPath(hierarchyRoot);
+        // USF paths are tagged by skill NAME; `heldCodes` are codes.
+        const model = withSkillCodes(parsed, codeOf);
         // Nothing is finished in a path the learner has not joined, so all of it is still to do.
         const { taughtCodes } = derivePathSkillCodes(model, NOTHING_FINISHED);
         const newSkills = taughtCodes.filter((code) => !heldCodes.has(code));
@@ -107,7 +123,7 @@ export function useSkillSuggestions(
         };
       })
       .filter((suggestion): suggestion is SkillSuggestion => suggestion !== null);
-  }, [candidates, hierarchyQueries, heldCodes]);
+  }, [candidates, candidateModels, codeOf, heldCodes]);
 
   const suggestions = useMemo(() => {
     const combined = [...enrolledSuggestions, ...discoverSuggestions];

@@ -130,6 +130,18 @@ export function buildMySkills(held: HeldSkill[], paths: PathSkillSummary[]): MyS
   );
 }
 
+/** Names each evidence row's source from `names` (source id -> name); unknown ids are left as-is. */
+export function withSourceNames(entries: MySkillEntry[], names: ReadonlyMap<string, string>): MySkillEntry[] {
+  if (names.size === 0) return entries;
+  return entries.map((entry) => ({
+    ...entry,
+    evidence: entry.evidence.map((e) => {
+      const sourceName = names.get(e.sourceId);
+      return sourceName ? { ...e, sourceName } : e;
+    }),
+  }));
+}
+
 /** Hero tallies. "X of Y" is gained / (gained + pending). */
 export function aggregateMySkills(entries: MySkillEntry[], paths: PathSkillSummary[]): SkillAggregate {
   const gained = entries.filter((e) => e.gained).length;

@@ -122,7 +122,7 @@ export function SkillCard({ entry, label, isExpanded, onToggle }: SkillCardProps
                     {evidence.map((ev) => (
                       <li key={ev.evidenceId} className="flex flex-wrap items-center gap-x-2 text-xs">
                         <span className="font-medium text-foreground">{sourceLabel(toSourceKind(ev.sourceType))}</span>
-                        {ev.sourceId && <span className="truncate text-sunbird-gray-75">{ev.sourceId}</span>}
+                        {ev.sourceId && <span className="truncate text-sunbird-gray-75">{ev.sourceName ?? ev.sourceId}</span>}
                         {typeof ev.score === 'number' && typeof ev.maxScore === 'number' && (
                           <>
                             <Dot />
