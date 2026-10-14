@@ -7,7 +7,9 @@ import { useSkillLabels, useSkillProfile } from './useSkillProfile';
 import { getPathSummary, indexSummaryByCollectionId, parseCourseContextId } from '../services/viewer/summaryMapper';
 import { parseLearningPath } from '../services/learningPath/learningPathMapper';
 import { buildPathSkillSummary } from '../services/learningPath/skillAggregation';
-import { aggregateMySkills, buildMySkills, heldCodeSet, withSourceNames } from '../services/skill/mySkills';
+import { aggregateMySkills, buildMySkills, heldCodeSet } from '../services/skill/mySkills';
+import { indexPathNodes, withEvidenceSources } from '../services/skill/evidenceSources';
+import type { EvidenceSource } from '../services/skill/evidenceSources';
 import { withSkillCodes } from '../services/skill/skillCodes';
 import { isLearningPathCategory } from '../utils/isLearningPath';
 import type { PathSkillSummary, SkillAggregate } from '../services/learningPath/skillAggregation';
@@ -138,19 +140,31 @@ export function useMySkills(): UseMySkillsResult {
     () => entries.map((e) => e.summary).filter((s): s is PathSkillSummary => !!s),
     [entries]
   );
-  // Evidence names its course by id; the enrolment list already has the names.
-  const courseNames = useMemo(
-    () =>
-      new Map(
-        (enrolments.data?.data?.courses ?? [])
-          .filter((c) => c.content?.name)
-          .map((c) => [c.courseId, c.content?.name ?? ''] as const)
-      ),
-    [enrolments.data]
-  );
+  // Evidence names its source by id. Directly enrolled courses are named by the enrolment list;
+  // anything inside an enrolled path (an assessment, say) by that path's hierarchy, with the path.
+  const evidenceSources = useMemo(() => {
+    const sources = new Map<string, EvidenceSource>();
+    (enrolments.data?.data?.courses ?? []).forEach((c) => {
+      if (c.content?.name) sources.set(c.courseId, { name: c.content.name });
+    });
+    paths.forEach((path, i) => {
+      const root = (hierarchyQueries[i]?.data as CollectionData | null | undefined)?.hierarchyRoot;
+      if (!root) return;
+      const ref = {
+        pathId: path.pathId,
+        ...(path.contextId ? { contextId: path.contextId } : {}),
+        pathName: path.name || root.name || '',
+      };
+      indexPathNodes(root, ref).forEach((source, id) => {
+        const known = sources.get(id);
+        if (!known?.path) sources.set(id, { ...known, ...source });
+      });
+    });
+    return sources;
+  }, [enrolments.data, paths, hierarchyQueries]);
   const skills = useMemo(
-    () => withSourceNames(buildMySkills(profile.skills, summaries), courseNames),
-    [profile.skills, summaries, courseNames]
+    () => withEvidenceSources(buildMySkills(profile.skills, summaries), evidenceSources),
+    [profile.skills, summaries, evidenceSources]
   );
   const heldCodes = useMemo(() => heldCodeSet(profile.skills), [profile.skills]);
   const aggregate = useMemo(() => aggregateMySkills(skills, summaries), [skills, summaries]);

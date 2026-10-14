@@ -18,7 +18,6 @@ import { buildSkillGrowthSeries } from '@/services/learningPath/skillGrowth';
 import {
   filterMySkills,
   getMostReinforcedSkills,
-  getRecentlyGainedSkills,
 } from '@/services/skill/mySkills';
 import type { SkillsView } from '@/components/mySkills/MySkillsControls';
 import type { PathSkillStatus } from '@/services/learningPath/skillAggregation';
@@ -57,7 +56,6 @@ const MySkills = () => {
   const labelOfEntry = (entry: MySkillEntry) => labelOf(entry.code, entry.frameworkId);
   const nameOf = (code: string, frameworkId?: string) => labelOf(code, frameworkId).name;
 
-  const recentlyGained = useMemo(() => getRecentlyGainedSkills(skills), [skills]);
   const mostReinforced = useMemo(() => getMostReinforcedSkills(skills), [skills]);
   const growthSeries = useMemo(() => buildSkillGrowthSeries(skills), [skills]);
 
@@ -150,7 +148,6 @@ const MySkills = () => {
             <SkillGrowthChart series={growthSeries} />
             {!labelsLoading && (
               <SkillInsights
-                recentlyGained={recentlyGained}
                 mostReinforced={mostReinforced}
                 nameOf={(entry) => labelOfEntry(entry).name}
                 onSelectSkill={selectSkillFromInsights}

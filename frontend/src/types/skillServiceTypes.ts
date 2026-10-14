@@ -124,6 +124,8 @@ export interface SkillEvidence {
   sourceId: string;
   /** Display name of the source (a course's name), when the client knows it. */
   sourceName?: string;
+  /** The enrolled Learning Path the source sits in, when it does. */
+  sourcePath?: { pathId: string; contextId?: string; pathName: string };
   score?: number;
   maxScore?: number;
   issuerId?: string;

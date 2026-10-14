@@ -4,7 +4,6 @@ import {
   buildMySkills,
   filterMySkills,
   getMostReinforcedSkills,
-  getRecentlyGainedSkills,
   toSourceKind,
 } from './mySkills';
 import { derivePathSkillCodes } from '../learningPath/skillAggregation';
@@ -186,11 +185,6 @@ describe('filterMySkills', () => {
 });
 
 describe('insights', () => {
-  it('returns recently gained skills newest first, skipping undated ones', () => {
-    const skills = buildMySkills([held('a', 'COURSE', SEP_2), held('b', 'COURSE', SEP_12), held('c', 'COURSE')], []);
-    expect(getRecentlyGainedSkills(skills).map((s) => s.code)).toEqual(['b', 'a']);
-  });
-
   it('returns skills taught by more than one enrolled path', () => {
     const other = path(model('other', [level('o1', [course('o-c1', ['sterile-field'])])]));
     const skills = buildMySkills(ashaProfile, [ashaPath, other]);

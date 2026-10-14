@@ -57,7 +57,7 @@ describe('SkillCard', () => {
     expect(screen.queryByTestId('skill-evidence')).not.toBeInTheDocument();
   });
 
-  it('expands to "how I earned this" with the evidence source, id and score', () => {
+  it('expands to "how I earned this" with the certificate id, and no score', () => {
     render(
       <MemoryRouter>
         <SkillCard entry={gainedEntry()} label={LABEL} isExpanded onToggle={vi.fn()} />
@@ -67,7 +67,95 @@ describe('SkillCard', () => {
     const evidence = screen.getByTestId('skill-evidence');
     expect(evidence).toHaveTextContent('mySkills.howEarned');
     expect(evidence).toHaveTextContent('nrp-cert-42');
-    expect(evidence).toHaveTextContent('18/20');
+    expect(evidence).not.toHaveTextContent('18/20');
+  });
+
+  it('shows the path an assessment was earned in, not its id, and no "also taught in" for it', () => {
+    const icu = { pathId: 'do_icu', contextId: 'ctx-1', pathName: 'ICU Nurse Induction V3' };
+    const entry = gainedEntry({
+      source: 'assessment',
+      evidence: [
+        { evidenceId: 'e1', sourceType: 'ASSESSMENT', sourceId: 'do_2146607650702295041296', sourcePath: icu, revoked: false },
+      ],
+    });
+    render(
+      <MemoryRouter>
+        <SkillCard entry={entry} label={LABEL} isExpanded onToggle={vi.fn()} />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByTestId('skill-evidence')).not.toHaveTextContent('do_2146607650702295041296');
+    expect(screen.getByTestId('skill-evidence-path')).toHaveTextContent('mySkills.earnedIn');
+    expect(screen.getByText('ICU Nurse Induction V3').closest('a')).toHaveAttribute(
+      'href',
+      '/learning-path/do_icu/batch/ctx-1/status'
+    );
+    expect(screen.queryByText('mySkills.alsoTaughtIn')).not.toBeInTheDocument();
+  });
+
+  it('names an assessment when its name is known', () => {
+    const entry = gainedEntry({
+      evidence: [
+        { evidenceId: 'e1', sourceType: 'ASSESSMENT', sourceId: 'do_a', sourceName: 'ICU Final Assessment', revoked: false },
+      ],
+    });
+    render(
+      <MemoryRouter>
+        <SkillCard entry={entry} label={LABEL} isExpanded onToggle={vi.fn()} />
+      </MemoryRouter>
+    );
+    expect(screen.getByTestId('skill-evidence')).toHaveTextContent('ICU Final Assessment');
+  });
+
+  // The header already says "Assessment · Oct 06": the row says only what it does not.
+  it('does not repeat the source or date the header already shows', () => {
+    const on = Date.UTC(2026, 9, 6);
+    const entry = gainedEntry({
+      source: 'assessment',
+      gainedAt: on,
+      evidence: [
+        { evidenceId: 'e1', sourceType: 'ASSESSMENT', sourceId: 'do_a', sourceName: 'ICU Entry Assessment V3', occurredOn: on, revoked: false },
+      ],
+    });
+    render(
+      <MemoryRouter>
+        <SkillCard entry={entry} label={LABEL} isExpanded onToggle={vi.fn()} />
+      </MemoryRouter>
+    );
+    const evidence = screen.getByTestId('skill-evidence');
+    expect(evidence).toHaveTextContent('ICU Entry Assessment V3');
+    expect(evidence).not.toHaveTextContent('mySkills.source.assessment');
+    expect(screen.getAllByText(new Date(on).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' }))).toHaveLength(1);
+  });
+
+  it('keeps the source and date on a row that differs from the header', () => {
+    const entry = gainedEntry({
+      source: 'course',
+      gainedAt: Date.UTC(2026, 9, 6),
+      evidence: [
+        { evidenceId: 'e1', sourceType: 'ASSESSMENT', sourceId: 'do_a', sourceName: 'Final', occurredOn: Date.UTC(2026, 9, 13), revoked: false },
+      ],
+    });
+    render(
+      <MemoryRouter>
+        <SkillCard entry={entry} label={LABEL} isExpanded onToggle={vi.fn()} />
+      </MemoryRouter>
+    );
+    const evidence = screen.getByTestId('skill-evidence');
+    expect(evidence).toHaveTextContent('mySkills.source.assessment');
+    expect(evidence).toHaveTextContent(new Date(Date.UTC(2026, 9, 13)).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' }));
+  });
+
+  it('hides an unnamed content id', () => {
+    const entry = gainedEntry({
+      evidence: [{ evidenceId: 'e1', sourceType: 'COURSE', sourceId: 'do_unknown', revoked: false }],
+    });
+    render(
+      <MemoryRouter>
+        <SkillCard entry={entry} label={LABEL} isExpanded onToggle={vi.fn()} />
+      </MemoryRouter>
+    );
+    expect(screen.getByTestId('skill-evidence')).not.toHaveTextContent('do_unknown');
   });
 
   it('says so when a gained skill has no evidence on record', () => {

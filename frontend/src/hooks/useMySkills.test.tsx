@@ -172,4 +172,28 @@ describe('useMySkills', () => {
     const { result } = renderHook(() => useMySkills(), { wrapper });
     expect(result.current.skills[0]?.evidence[0]?.sourceName).toBe('skill course');
   });
+
+  // An assessment inside a path was never enrolled in directly: the path's hierarchy names it.
+  it('names evidence from inside an enrolled path, with that path', async () => {
+    mockCourses = [learningPathEnrollment({})];
+    mockHeld = [
+      {
+        skillId: 'jp',
+        frameworkId: 'USF',
+        sourceType: 'ASSESSMENT',
+        evidence: [{ evidenceId: 'e1', sourceType: 'ASSESSMENT', sourceId: 'do_2146316303263006721126', revoked: false }],
+      },
+    ];
+    const { result } = renderHook(() => useMySkills(), { wrapper });
+    await waitFor(() => expect(result.current.analyzedCount).toBe(1));
+
+    const jp = result.current.skills.find((s) => s.code === 'jp');
+    expect(jp?.evidence[0]).toEqual(
+      expect.objectContaining({
+        sourceName: 'LP-Course-1-JP-PP',
+        sourcePath: { pathId: LP_ID, contextId: 'batch-1', pathName: 'TLP-1' },
+      })
+    );
+    expect(jp?.paths.some((p) => p.pathId === LP_ID)).toBe(false);
+  });
 });

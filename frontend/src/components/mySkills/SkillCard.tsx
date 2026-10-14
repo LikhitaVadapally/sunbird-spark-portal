@@ -3,8 +3,9 @@ import { FiCheck, FiChevronDown, FiLock } from 'react-icons/fi';
 import { useAppI18n } from '@/hooks/useAppI18n';
 import { getLearningPathStatusPath } from '@/utils/getContentDetailPath';
 import { toSourceKind } from '@/services/skill/mySkills';
-import type { MySkillEntry, SkillPathRef } from '@/services/skill/mySkills';
+import type { MySkillEntry, SkillPathRef, SkillSourceKind } from '@/services/skill/mySkills';
 import type { SkillLabel } from '@/services/skill';
+import type { SkillEvidence } from '@/types/skillServiceTypes';
 
 interface SkillCardProps {
   entry: MySkillEntry;
@@ -16,6 +17,31 @@ interface SkillCardProps {
 function formatSkillDate(ms: number | undefined): string {
   if (!ms) return '';
   return new Date(ms).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+/**
+ * What to call an evidence source. A content id means nothing to a learner, so an unnamed one is
+ * left out; an outside certificate's id is its certificate number, so that one stays. A path's own
+ * name is not repeated here - the path line below already shows it.
+ */
+function evidenceName(ev: SkillEvidence): string | undefined {
+  if (ev.sourcePath && ev.sourcePath.pathId === ev.sourceId) return undefined;
+  if (ev.sourceName) return ev.sourceName;
+  return toSourceKind(ev.sourceType) === 'external' && ev.sourceId ? ev.sourceId : undefined;
+}
+
+/**
+ * One evidence row, minus what the card header already says. The header shows the skill's source
+ * and date, so a row repeats them only where they differ - which happens when several pieces of
+ * evidence back one skill. A row with nothing else to show keeps its kind.
+ */
+function evidenceRow(ev: SkillEvidence, entry: MySkillEntry): { kind?: SkillSourceKind; name?: string; date?: string } {
+  const kind = toSourceKind(ev.sourceType);
+  const name = evidenceName(ev);
+  const date = formatSkillDate(ev.occurredOn);
+  const showDate = Boolean(date) && date !== formatSkillDate(entry.gainedAt);
+  const showKind = kind !== entry.source || (!name && !showDate && !ev.sourcePath);
+  return { ...(showKind ? { kind } : {}), ...(name ? { name } : {}), ...(showDate ? { date } : {}) };
 }
 
 const Dot = () => <span className="text-xs text-sunbird-gray-75">·</span>;
@@ -46,6 +72,7 @@ function PathLinks({ heading, paths }: { heading: string; paths: SkillPathRef[] 
  */
 export function SkillCard({ entry, label, isExpanded, onToggle }: SkillCardProps) {
   const { t } = useAppI18n();
+  const location = useLocation();
   const { gained, source, gainedAt, evidence, paths } = entry;
   const sourceLabel = (kind: string) => t(`mySkills.source.${kind}`);
 
@@ -119,26 +146,35 @@ export function SkillCard({ entry, label, isExpanded, onToggle }: SkillCardProps
                   <p className="text-xs text-sunbird-gray-75">{t('mySkills.noEvidence')}</p>
                 ) : (
                   <ul className="flex flex-col gap-1.5">
-                    {evidence.map((ev) => (
-                      <li key={ev.evidenceId} className="flex flex-wrap items-center gap-x-2 text-xs">
-                        <span className="font-medium text-foreground">{sourceLabel(toSourceKind(ev.sourceType))}</span>
-                        {ev.sourceId && <span className="truncate text-sunbird-gray-75">{ev.sourceName ?? ev.sourceId}</span>}
-                        {typeof ev.score === 'number' && typeof ev.maxScore === 'number' && (
-                          <>
-                            <Dot />
-                            <span className="text-sunbird-gray-75">
-                              {ev.score}/{ev.maxScore}
-                            </span>
-                          </>
-                        )}
-                        {ev.occurredOn !== undefined && (
-                          <>
-                            <Dot />
-                            <span className="text-sunbird-gray-75">{formatSkillDate(ev.occurredOn)}</span>
-                          </>
-                        )}
-                      </li>
-                    ))}
+                    {evidence.map((ev) => {
+                      const row = evidenceRow(ev, entry);
+                      return (
+                        <li key={ev.evidenceId} className="flex flex-col gap-0.5 text-xs">
+                          <div className="flex flex-wrap items-center gap-x-2">
+                            {row.kind && <span className="font-medium text-foreground">{sourceLabel(row.kind)}</span>}
+                            {row.name && <span className="truncate font-medium text-foreground">{row.name}</span>}
+                            {row.date && (
+                              <>
+                                {(row.kind || row.name) && <Dot />}
+                                <span className="text-sunbird-gray-75">{row.date}</span>
+                              </>
+                            )}
+                          </div>
+                          {ev.sourcePath && (
+                            <div className="flex min-w-0 items-center gap-x-1" data-testid="skill-evidence-path">
+                              <span className="text-sunbird-gray-75">{t('mySkills.earnedIn')}</span>
+                              <Link
+                                to={getLearningPathStatusPath(ev.sourcePath.pathId, ev.sourcePath.contextId)}
+                                state={{ from: location.pathname + location.search }}
+                                className="truncate font-medium text-sunbird-brick hover:underline"
+                              >
+                                {ev.sourcePath.pathName}
+                              </Link>
+                            </div>
+                          )}
+                        </li>
+                      );
+                    })}
                   </ul>
                 )}
               </div>
