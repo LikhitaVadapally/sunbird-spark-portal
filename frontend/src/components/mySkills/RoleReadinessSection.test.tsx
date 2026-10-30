@@ -148,6 +148,24 @@ describe('RoleReadinessSection', () => {
     expect(renderSection().container).toBeEmptyDOMElement();
   });
 
+  it('keeps role cards in one scrolling row, with View all once they overflow it', () => {
+    renderSection();
+    expect(screen.queryByTestId('role-cards-toggle')).not.toBeInTheDocument();
+    gapState.gap = {
+      frameworkId: 'fw',
+      current: roleGap('icu-nurse'),
+      targets: [roleGap('officer'), roleGap('supervisor'), roleGap('old-role')],
+      resolved: true,
+    };
+    renderSection();
+    const rows = screen.getAllByTestId('role-cards');
+    const row = rows[rows.length - 1]!;
+    expect(row.className).toContain('overflow-x-auto');
+    fireEvent.click(screen.getByTestId('role-cards-toggle'));
+    expect(row.className).toContain('grid');
+    expect(screen.getByTestId('role-cards-toggle')).toHaveTextContent('viewLess');
+  });
+
   it('offers a retry when readiness cannot be read', () => {
     gapState = { isLoading: false, isError: true };
     renderSection();

@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { FiArrowRight } from 'react-icons/fi';
 import { useAppI18n } from '@/hooks/useAppI18n';
 import { useToast } from '@/hooks/useToast';
 import { useSkillFrameworks, useSkillProfile } from '@/hooks/useSkillProfile';
@@ -9,6 +10,9 @@ import { NextStepsList } from '@/components/skillProfile/NextStepsList';
 import { RoleReadinessCard } from './RoleReadinessCard';
 import { AddTargetRole } from './AddTargetRole';
 import type { SkillLabel } from '@/services/skill';
+
+/** One row holds this many cards on a wide screen; past that the row scrolls and "View all" appears. */
+const ROW_CARDS = 3;
 
 interface RoleReadinessSectionProps {
   labelOf: (code: string, frameworkId?: string) => SkillLabel;
@@ -39,8 +43,11 @@ export function RoleReadinessSection({ labelOf, className = '' }: RoleReadinessS
   const nameOf = (code: string) => labelOf(code, frameworkId).name;
 
   // Next steps only make sense for a role with something still to earn.
-  const actionable = cards.filter((c) => c.gap.measurable && c.gap.outstanding.length > 0).map((c) => c.code);
+  const actionable = cards
+    .filter((c) => c.gap.measurable && c.gap.outstanding.length > 0)
+    .map((c) => c.code);
   const [selected, setSelected] = useState<string>();
+  const [showAll, setShowAll] = useState(false);
   const activeRole = selected && actionable.includes(selected) ? selected : actionable[0];
   const { recommendation } = useSkillRecommend(frameworkId, activeRole);
 
@@ -59,7 +66,11 @@ export function RoleReadinessSection({ labelOf, className = '' }: RoleReadinessS
         data-testid="role-readiness-error"
       >
         <span className="text-sm text-foreground">{t('skillProfile.loadError')}</span>
-        <button type="button" onClick={refetch} className="text-sm font-medium text-sunbird-brick hover:underline">
+        <button
+          type="button"
+          onClick={refetch}
+          className="text-sm font-medium text-sunbird-brick hover:underline"
+        >
           {t('retry')}
         </button>
       </div>
@@ -74,19 +85,46 @@ export function RoleReadinessSection({ labelOf, className = '' }: RoleReadinessS
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="text-base font-semibold text-foreground">{t('skillProfile.rolesTitle')}</h2>
+          <h2 className="text-base font-semibold text-foreground">
+            {t('skillProfile.rolesTitle')}
+          </h2>
           <p className="mt-0.5 text-sm text-sunbird-gray-75">{t('skillProfile.rolesSubtitle')}</p>
         </div>
-        <AddTargetRole
-          roles={addable}
-          roleName={roleName}
-          onAdd={(code) => change({ add: code })}
-          disabled={update.isPending}
-        />
+        <div className="flex items-center gap-4">
+          {1 + targets.length > ROW_CARDS && (
+            <button
+              type="button"
+              onClick={() => setShowAll((v) => !v)}
+              className="flex shrink-0 items-center gap-1 text-sm font-medium text-sunbird-brick hover:underline"
+              data-testid="role-cards-toggle"
+            >
+              {showAll ? t('viewLess') : t('mySkills.viewAll')}
+              {!showAll && <FiArrowRight className="h-3.5 w-3.5" />}
+            </button>
+          )}
+          <AddTargetRole
+            roles={addable}
+            roleName={roleName}
+            onAdd={(code) => change({ add: code })}
+            disabled={update.isPending}
+          />
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-        <RoleReadinessCard kind="assigned" {...(assigned ? { card: assigned } : {})} nameOf={nameOf} />
+      {/* Same scrolling row as "Skills you could gain next"; "View all" opens it into a grid. */}
+      <div
+        className={
+          showAll
+            ? 'grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3'
+            : 'flex snap-x snap-mandatory gap-3 overflow-x-auto pb-1 [&>*]:w-[85%] [&>*]:shrink-0 [&>*]:snap-start sm:[&>*]:w-[calc((100%_-_0.75rem)/2)] xl:[&>*]:w-[calc((100%_-_1.5rem)/3)]'
+        }
+        data-testid="role-cards"
+      >
+        <RoleReadinessCard
+          kind="assigned"
+          {...(assigned ? { card: assigned } : {})}
+          nameOf={nameOf}
+        />
         {targets.map((card) => (
           <RoleReadinessCard
             key={card.code}
