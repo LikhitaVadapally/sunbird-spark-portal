@@ -135,6 +135,22 @@ describe('normaliseGap', () => {
     expect(g.current?.readiness).toBe(0);
   });
 
+  // A retired or skill-less role comes back unresolved with a null readiness: not 0%, not 100%.
+  it('marks a role the service could not measure', () => {
+    const g = normaliseGap({
+      frameworkId: 'fw',
+      current: { role: 'gone', resolved: false, readiness: null, required: 0, met: 0, gap: [], outstanding: [] },
+      targets: [{ role: 'r', resolved: true, readiness: 40, required: 5, met: 2, outstanding: ['a'] }],
+    });
+    expect(g.current?.measurable).toBe(false);
+    expect(g.current?.readiness).toBe(0);
+    expect(g.targets[0]!.measurable).toBe(true);
+  });
+
+  it('treats a numeric readiness as measured when an older build omits resolved', () => {
+    expect(normaliseGap(full).current?.measurable).toBe(true);
+  });
+
   // A build that omits `outstanding` should still tell the learner what is missing.
   it('derives outstanding from the gap rows when the field is absent', () => {
     const g = normaliseGap({

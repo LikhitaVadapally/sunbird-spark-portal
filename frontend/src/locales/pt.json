@@ -1654,6 +1654,15 @@
     "nextSteps": "What to do next",
     "nextStepsFor": "to reach {{role}}",
     "covers": "Covers {{covered}} of {{total}} skills",
-    "alreadyHeld": "{{count}} already held"
+    "alreadyHeld": "{{count}} already held",
+    "rolesTitle": "As suas funções",
+    "rolesSubtitle": "O quanto está preparado para a função que exerce e para as funções que pretende alcançar",
+    "retired": "Descontinuada",
+    "notMeasurable": "Esta função ainda não tem competências definidas",
+    "removeTarget": "Remover {{role}}",
+    "addTarget": "Adicionar uma função-alvo",
+    "saveError": "Não foi possível guardar esta função. Tente novamente.",
+    "loadError": "Não foi possível carregar a sua preparação para as funções.",
+    "nextStepsChoose": "Mostrar próximos passos para"
   }
 }

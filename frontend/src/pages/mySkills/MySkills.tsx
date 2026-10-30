@@ -12,6 +12,7 @@ import { SkillGrowthChart } from '@/components/mySkills/SkillGrowthChart';
 import { SkillSuggestionRow } from '@/components/mySkills/SkillSuggestionRow';
 import { SkillCard } from '@/components/mySkills/SkillCard';
 import { SkillPathAccordion } from '@/components/mySkills/SkillPathAccordion';
+import { RoleReadinessSection } from '@/components/mySkills/RoleReadinessSection';
 import { EmptyResult, ProfileErrorBanner, SkillCardSkeletons } from '@/components/mySkills/MySkillsStates';
 import { filterPathSummaries } from '@/services/learningPath/skillAggregation';
 import { buildSkillGrowthSeries } from '@/services/learningPath/skillGrowth';
@@ -136,6 +137,7 @@ const MySkills = () => {
       <p className="mt-1 text-sm text-sunbird-gray-75">{t('mySkills.subtitle')}</p>
 
       {profileError && <ProfileErrorBanner onRetry={refetch} />}
+      {!labelsLoading && <RoleReadinessSection labelOf={labelOf} className="mt-6" />}
 
       {isEmpty ? (
         <div className="mt-6 flex min-h-[12rem] items-center justify-center rounded-2xl border border-sunbird-gray-e5 bg-surface">

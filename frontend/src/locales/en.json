@@ -1656,6 +1656,15 @@
     "nextSteps": "What to do next",
     "nextStepsFor": "to reach {{role}}",
     "covers": "Covers {{covered}} of {{total}} skills",
-    "alreadyHeld": "{{count}} already held"
+    "alreadyHeld": "{{count}} already held",
+    "rolesTitle": "Your roles",
+    "rolesSubtitle": "How ready you are for the role you hold and the roles you are aiming for",
+    "retired": "Retired",
+    "notMeasurable": "This role has no skills defined yet",
+    "removeTarget": "Remove {{role}}",
+    "addTarget": "Add a target role",
+    "saveError": "Couldn't save this role. Please try again.",
+    "loadError": "Couldn't load your role readiness.",
+    "nextStepsChoose": "Show next steps for"
   }
 }

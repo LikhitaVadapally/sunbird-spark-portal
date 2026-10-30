@@ -55,7 +55,10 @@ export interface GapRowWire {
 
 export interface RoleGapWire {
   role?: string;
-  readiness?: number;
+  /** False when the role cannot be measured: it does not exist, or requires no skills. */
+  resolved?: boolean;
+  /** Null when `resolved` is false - never a 0 or a 100 the client would show. */
+  readiness?: number | null;
   required?: number;
   met?: number;
   gap?: GapRowWire[];
@@ -144,6 +147,11 @@ export interface HeldSkill {
 
 export interface RoleGap {
   role: string;
+  /**
+   * False when the service could not measure the role (unknown, or requires nothing). Such a role
+   * has no readiness to show, which is not the same as 0%.
+   */
+  measurable: boolean;
   readiness: number;
   required: number;
   met: number;

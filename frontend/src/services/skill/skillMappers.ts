@@ -79,6 +79,8 @@ function normaliseRoleGap(raw: RoleGapWire | null | undefined): RoleGap | undefi
     .map((g) => g.skillId as string);
   return {
     role: raw.role,
+    // Older builds omit `resolved`; a numeric readiness is then the only evidence it was measured.
+    measurable: raw.resolved ?? typeof raw.readiness === 'number',
     readiness: typeof raw.readiness === 'number' ? raw.readiness : 0,
     required: typeof raw.required === 'number' ? raw.required : 0,
     met: typeof raw.met === 'number' ? raw.met : 0,

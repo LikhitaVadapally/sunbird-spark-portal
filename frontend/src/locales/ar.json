@@ -1655,6 +1655,15 @@
     "nextSteps": "What to do next",
     "nextStepsFor": "to reach {{role}}",
     "covers": "Covers {{covered}} of {{total}} skills",
-    "alreadyHeld": "{{count}} already held"
+    "alreadyHeld": "{{count}} already held",
+    "rolesTitle": "أدوارك",
+    "rolesSubtitle": "مدى جاهزيتك للدور الذي تشغله والأدوار التي تطمح إليها",
+    "retired": "متوقف",
+    "notMeasurable": "لم تُحدَّد مهارات لهذا الدور بعد",
+    "removeTarget": "إزالة {{role}}",
+    "addTarget": "إضافة دور مستهدف",
+    "saveError": "تعذّر حفظ هذا الدور. يُرجى المحاولة مرة أخرى.",
+    "loadError": "تعذّر تحميل جاهزيتك للأدوار.",
+    "nextStepsChoose": "عرض الخطوات التالية لـ"
   }
 }

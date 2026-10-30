@@ -20,6 +20,10 @@ vi.mock('@/hooks/useToast', () => ({ useToast: () => ({ toast: mockToast }) }));
 
 vi.mock('@/hooks/useMySkills', () => ({ useMySkills: vi.fn() }));
 vi.mock('@/hooks/useSkillSuggestions', () => ({ useSkillSuggestions: vi.fn() }));
+// The section has its own tests; here only its placement matters.
+vi.mock('@/components/mySkills/RoleReadinessSection', () => ({
+  RoleReadinessSection: () => <div data-testid="role-readiness-section" />,
+}));
 
 const mockUseMySkills = vi.mocked(useMySkills);
 const mockUseSkillSuggestions = vi.mocked(useSkillSuggestions);
@@ -116,6 +120,17 @@ describe('MySkills', () => {
   });
 
   // A standalone course or an external certificate is a skill too - no Learning Path needed.
+  // A learner with an assigned role but no skills yet is the one who most needs to see the gap.
+  it('shows the roles section even in the empty state, but not while names load', () => {
+    mockUseMySkills.mockReturnValue(baseResult());
+    const { unmount } = renderPage();
+    expect(screen.getByTestId('role-readiness-section')).toBeInTheDocument();
+    unmount();
+    mockUseMySkills.mockReturnValue(withSkills([gainedSql], { labelsLoading: true }));
+    renderPage();
+    expect(screen.queryByTestId('role-readiness-section')).not.toBeInTheDocument();
+  });
+
   it('lists gained skills even with no enrolled Learning Paths', () => {
     mockUseMySkills.mockReturnValue(baseResult({ skills: [gainedSql] }));
     renderPage();

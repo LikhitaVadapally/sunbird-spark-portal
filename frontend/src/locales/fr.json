@@ -1654,6 +1654,15 @@
     "nextSteps": "What to do next",
     "nextStepsFor": "to reach {{role}}",
     "covers": "Covers {{covered}} of {{total}} skills",
-    "alreadyHeld": "{{count}} already held"
+    "alreadyHeld": "{{count}} already held",
+    "rolesTitle": "Vos rôles",
+    "rolesSubtitle": "Votre niveau de préparation pour le rôle que vous occupez et ceux que vous visez",
+    "retired": "Retiré",
+    "notMeasurable": "Aucune compétence n'est encore définie pour ce rôle",
+    "removeTarget": "Retirer {{role}}",
+    "addTarget": "Ajouter un rôle cible",
+    "saveError": "Impossible d'enregistrer ce rôle. Veuillez réessayer.",
+    "loadError": "Impossible de charger votre niveau de préparation.",
+    "nextStepsChoose": "Afficher les prochaines étapes pour"
   }
 }
