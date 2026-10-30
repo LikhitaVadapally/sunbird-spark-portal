@@ -13,11 +13,37 @@ interface RoleReadinessCardProps {
 }
 
 /**
- * Readiness for one role: how many of its skills the learner holds, and which are still missing.
+ * Readiness for one role: which of its skills the learner holds, and which are still missing.
  *
  * Neither "no role assigned" nor "role cannot be measured" renders a percentage: either as 0% would
  * tell a qualified learner they are unqualified.
  */
+interface SkillChipsProps {
+  label: string;
+  codes: string[];
+  nameOf: (code: string) => string;
+  tone: 'held' | 'needed';
+  testId: string;
+}
+
+function SkillChips({ label, codes, nameOf, tone, testId }: SkillChipsProps) {
+  if (codes.length === 0) return null;
+  const chip =
+    tone === 'held' ? 'bg-sunbird-success-message-bg text-sunbird-green-dark' : 'bg-sunbird-ivory text-sunbird-gray-75';
+  return (
+    <div className="mt-3">
+      <p className="text-xs font-medium text-sunbird-gray-75">{label}</p>
+      <ul className="mt-1 flex flex-wrap gap-1.5" data-testid={testId}>
+        {codes.map((code) => (
+          <li key={code} className={`rounded-full px-2 py-0.5 text-xs ${chip}`}>
+            {nameOf(code)}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 export function RoleReadinessCard({ kind, card, nameOf, onRemove, isRemoving }: RoleReadinessCardProps) {
   const { t } = useAppI18n();
   const isAssigned = kind === 'assigned';
@@ -78,18 +104,20 @@ export function RoleReadinessCard({ kind, card, nameOf, onRemove, isRemoving }: 
                   style={{ width: `${Math.min(100, Math.max(0, gap.readiness))}%` }}
                 />
               </div>
-              {gap.outstanding.length > 0 && (
-                <div className="mt-3">
-                  <p className="text-xs font-medium text-sunbird-gray-75">{t('skillProfile.stillNeeded')}</p>
-                  <ul className="mt-1 flex flex-wrap gap-1.5" data-testid={`${testId}-outstanding`}>
-                    {gap.outstanding.map((code) => (
-                      <li key={code} className="rounded-full bg-sunbird-ivory px-2 py-0.5 text-xs text-sunbird-gray-75">
-                        {nameOf(code)}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
+              <SkillChips
+                label={t('skillProfile.alreadyHave')}
+                codes={gap.held}
+                nameOf={nameOf}
+                tone="held"
+                testId={`${testId}-held`}
+              />
+              <SkillChips
+                label={t('skillProfile.stillNeeded')}
+                codes={gap.outstanding}
+                nameOf={nameOf}
+                tone="needed"
+                testId={`${testId}-outstanding`}
+              />
             </>
           )}
         </>

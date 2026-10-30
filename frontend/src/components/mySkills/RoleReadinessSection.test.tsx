@@ -34,6 +34,7 @@ const roleGap = (role: string, over: Partial<RoleGap> = {}): RoleGap => ({
   required: 2,
   met: 1,
   outstanding: ['b'],
+  held: ['a'],
   ...over,
 });
 
@@ -70,12 +71,13 @@ beforeEach(() => {
 });
 
 describe('RoleReadinessSection', () => {
-  it('shows readiness for the assigned role and each target, with missing skills named', () => {
+  it('shows readiness for the assigned role and each target, with held and missing skills named', () => {
     renderSection();
     const assigned = screen.getByTestId('role-card-icu-nurse');
     expect(within(assigned).getByText('ICU Nurse')).toBeInTheDocument();
     expect(within(assigned).getByText('50%')).toBeInTheDocument();
     expect(within(assigned).getByText('Skill b')).toBeInTheDocument();
+    expect(within(screen.getByTestId('role-card-icu-nurse-held')).getByText('Skill a')).toBeInTheDocument();
     expect(within(screen.getByTestId('role-card-officer')).getByText('Skill c')).toBeInTheDocument();
     // The assigned role is an admin's: it has no remove control.
     expect(screen.queryByTestId('remove-role-icu-nurse')).not.toBeInTheDocument();

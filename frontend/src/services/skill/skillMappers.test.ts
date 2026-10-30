@@ -151,6 +151,27 @@ describe('normaliseGap', () => {
     expect(normaliseGap(full).current?.measurable).toBe(true);
   });
 
+  it('lists the skills already held from the MET rows', () => {
+    const g = normaliseGap({
+      frameworkId: 'fw',
+      targets: [
+        {
+          role: 'r',
+          resolved: true,
+          readiness: 50,
+          required: 2,
+          met: 1,
+          gap: [
+            { skillId: 'a', status: 'MET' },
+            { skillId: 'b', status: 'MISSING' },
+          ],
+          outstanding: ['b'],
+        },
+      ],
+    });
+    expect(g.targets[0]!.held).toEqual(['a']);
+  });
+
   // A build that omits `outstanding` should still tell the learner what is missing.
   it('derives outstanding from the gap rows when the field is absent', () => {
     const g = normaliseGap({

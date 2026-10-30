@@ -26,7 +26,7 @@ function wrapper() {
 
 const gap: SkillGap = {
   frameworkId: 'fw',
-  targets: [{ role: 'officer', measurable: true, readiness: 50, required: 2, met: 1, outstanding: ['b'] }],
+  targets: [{ role: 'officer', measurable: true, readiness: 50, required: 2, met: 1, outstanding: ['b'], held: ['a'] }],
   resolved: true,
 };
 

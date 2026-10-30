@@ -9,6 +9,7 @@ const roleGap = (role: string, over: Partial<RoleGap> = {}): RoleGap => ({
   required: 2,
   met: 1,
   outstanding: ['b'],
+  held: ['a'],
   ...over,
 });
 

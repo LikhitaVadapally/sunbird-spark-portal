@@ -1651,6 +1651,7 @@
     "targetRoleUnset": "Choose a target role to see how ready you are",
     "chooseTarget": "Aiming at",
     "metOf": "{{met}} of {{required}} skills",
+    "alreadyHave": "لديك",
     "stillNeeded": "Still needed",
     "nextSteps": "What to do next",
     "nextStepsFor": "to reach {{role}}",

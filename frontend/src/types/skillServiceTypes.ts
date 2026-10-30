@@ -157,6 +157,8 @@ export interface RoleGap {
   met: number;
   /** Skill codes still to earn. */
   outstanding: string[];
+  /** Skill codes of the role the learner already holds, so the score can be explained. */
+  held: string[];
 }
 
 export interface SkillGap {
