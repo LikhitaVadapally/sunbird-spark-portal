@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import useImpression from "@/hooks/useImpression";
 import useInteract from "@/hooks/useInteract";
 import { useTelemetry } from "@/hooks/useTelemetry";
-import { FiShield, FiLock, FiTarget } from "react-icons/fi";
+import { FiShield, FiLock, FiTarget, FiLayers } from "react-icons/fi";
 import { useToast } from "@/hooks/useToast";
 import { useAppI18n } from "@/hooks/useAppI18n";
 import {
@@ -12,6 +12,7 @@ import {
 } from "@/services/UserManagementService";
 import RoleManagementTab from "./RoleManagementTab";
 import { CompetencyRoleTab } from "./CompetencyRoleTab";
+import { SkillFrameworkTab } from "./SkillFrameworkTab";
 import UserConsentTab from "./UserConsentTab";
 import { TermsAndConditionsDialog } from "@/components/termsAndCondition/TermsAndConditionsDialog";
 import { useSystemSetting } from "@/hooks/useSystemSetting";
@@ -39,6 +40,7 @@ const getUmTabs = (t: (k: string) => string): UMTab[] => [
   { id: "role-management", label: t("userManagement.tabs.changeUserRoles"), icon: FiShield },
   { id: "user-consent", label: t("userManagement.tabs.userConsent"), icon: FiLock },
   { id: "competency-role", label: t("userManagement.tabs.competencyRole"), icon: FiTarget },
+  { id: "skill-framework", label: t("userManagement.tabs.skillFramework"), icon: FiLayers },
 ];
 
 /* ── Main Page ───────────────────────────────────────────────────────────── */
@@ -112,6 +114,10 @@ const UserManagementPage = () => {
     
     return orgs;
   }, [userRes]);
+
+  // Knowlg lets the proxy's X-Channel-Id (session root org) win over the body, so match it here.
+  const rootOrgChannel: string = _.get(userRes, 'data.response.rootOrg.hashTagId') || _.get(userRes, 'data.response.rootOrgId') || '';
+  const rootOrgName: string | undefined = _.get(userRes, 'data.response.rootOrg.orgName');
 
   const loadRoles = useCallback(async () => {
     try {
@@ -228,6 +234,9 @@ const UserManagementPage = () => {
                   {activeTab === "user-consent" && <UserConsentTab />}
                   {activeTab === "competency-role" && (
                     <CompetencyRoleTab frameworkIds={COMPETENCY_FRAMEWORKS} />
+                  )}
+                  {activeTab === "skill-framework" && (
+                    <SkillFrameworkTab frameworkIds={COMPETENCY_FRAMEWORKS} channel={rootOrgChannel} orgName={rootOrgName} />
                   )}
                 </div>
 

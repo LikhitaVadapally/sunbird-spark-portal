@@ -10,8 +10,10 @@ import express, { Request, Response, NextFunction } from 'express';
 // requireOwnUserId guard still applies (it does not on the catch-all).
 
 vi.mock('../proxies/kongProxy.js', () => ({
-    kongProxy: vi.fn((_req: Request, res: Response) => {
-        res.status(200).json({ proxiedBy: 'kong' });
+    kongProxy: vi.fn((req: Request, res: Response) => {
+        // bodyParsed lets the multipart tests prove no parser consumed the upload stream,
+        // which is what lets the real kongProxy pipe it to Kong unchanged.
+        res.status(200).json({ proxiedBy: 'kong', bodyParsed: req.body !== undefined });
     }),
 }));
 
@@ -162,6 +164,59 @@ describe('portalProxyRoutes - requireOwnUserId (IDOR guard)', () => {
 
         const response = await request(app).get('/portal/summary/v1/list/12345').expect(200);
 
+        expect(response.body.proxiedBy).toBe('kong');
+    });
+});
+
+describe('portalProxyRoutes - competency framework admin routes', () => {
+    const buildAdminApp = (roles?: string[]) => {
+        const app = express();
+        app.use(express.json());
+        app.use((req: Request, _res: Response, next: NextFunction) => {
+            (req as unknown as { session: { userId: string; roles?: string[] } }).session = { userId: 'u1', roles };
+            next();
+        });
+        app.use('/portal', portalProxyRoutes);
+        return app;
+    };
+
+    const adminRoutes: Array<['post' | 'patch' | 'get' | 'delete', string]> = [
+        ['post', '/portal/competency-framework/v3/create'],
+        ['patch', '/portal/competency-framework/v3/update/fw1'],
+        ['post', '/portal/competency-framework/v3/publish/fw1'],
+        ['post', '/portal/competency-framework/v3/review/fw1'],
+        ['post', '/portal/competency-framework/v3/reject/fw1'],
+        ['delete', '/portal/competency-framework/v3/retire/fw1'],
+        ['post', '/portal/framework/v3/term/validate'],
+        ['post', '/portal/framework/v3/term/commit'],
+        ['get', '/portal/framework/v3/term/download/fw1'],
+    ];
+
+    it.each(adminRoutes)('%s %s reaches kongProxy for an ORG_ADMIN', async (method, url) => {
+        const response = await request(buildAdminApp(['PUBLIC', 'ORG_ADMIN']))[method](url).expect(200);
+        expect(response.body.proxiedBy).toBe('kong');
+    });
+
+    // Regression guard: without the explicit routes these fall to the `/*rest` catch-all, which
+    // lets any logged-in learner commit a sheet that retires skills.
+    it.each(adminRoutes)('%s %s is forbidden to a non-admin', async (method, url) => {
+        const response = await request(buildAdminApp(['PUBLIC', 'CONTENT_CREATOR']))[method](url).expect(403);
+        expect(response.body.params.err).toBe('ERR_FORBIDDEN');
+    });
+
+    it.each(['validate', 'commit'])('passes the multipart %s upload through unparsed', async (verb) => {
+        const response = await request(buildAdminApp(['ORG_ADMIN']))
+            .post(`/portal/framework/v3/term/${verb}`)
+            .field('framework', 'fw1')
+            .attach('file', Buffer.from('Category,Name,Code,Associated Terms,Description\n'), 'skills.csv')
+            .expect(200);
+        expect(response.body).toEqual({ proxiedBy: 'kong', bodyParsed: false });
+    });
+
+    it('leaves the framework read on the catch-all, open to any logged-in user', async () => {
+        const response = await request(buildAdminApp(['PUBLIC']))
+            .get('/portal/competency-framework/v3/read/fw1')
+            .expect(200);
         expect(response.body.proxiedBy).toBe('kong');
     });
 });

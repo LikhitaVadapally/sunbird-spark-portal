@@ -46,8 +46,13 @@ export class AxiosAdapter extends BaseClient {
           const body = error.response.data as Record<string, unknown> | undefined;
           const params = body?.params as Record<string, unknown> | undefined;
           const errmsg = typeof params?.errmsg === 'string' ? params.errmsg : error.message || `Request failed (${status})`;
-          const err = new Error(errmsg) as Error & { status: number };
+          // `errCode` and `result` carry the Sunbird envelope's params.err and result through, for
+          // APIs that answer a 4xx with a structured body the caller must render (e.g. the
+          // competency framework term validate/commit, whose rows[] explain what failed).
+          const err = new Error(errmsg) as Error & { status: number; errCode?: string; result?: unknown };
           err.status = status;
+          if (typeof params?.err === 'string') err.errCode = params.err;
+          if (!_.isNil(body?.result)) err.result = body?.result;
           throw err;
         }
         return this.mapResponse(error.response as AxiosResponse<T>);

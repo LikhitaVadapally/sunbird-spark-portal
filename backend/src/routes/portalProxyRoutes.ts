@@ -4,6 +4,7 @@ import { kongProxy } from '../proxies/kongProxy.js';
 import { validateRecaptcha } from '../middlewares/googleAuth.js';
 import { handlePassword } from '../middlewares/passwordHandler.js';
 import { requireAuth } from '../auth/oidcMiddleware.js';
+import { requireRole } from '../middlewares/requireRole.js';
 
 const router = express.Router();
 
@@ -61,6 +62,29 @@ router.get('/summary/v1/list/:userId', requireAuth(), requireOwnUserId, kongProx
 router.post('/summary/v1/read', requireAuth(), kongProxy);
 router.delete('/summary/v1/delete/:userId', requireAuth(), requireOwnUserId, kongProxy);
 router.get('/summary/v1/download/:userId', requireAuth(), requireOwnUserId, kongProxy);
+
+// Competency (skill) framework authoring - Knowlg taxonomy, branch feat/competency-framework.
+// Used by the admin-only Skill Framework tab under User Management. Knowlg does no role checks,
+// and the `/*rest` catch-all below only requires *a* login, so these are registered explicitly
+// to add the ORG_ADMIN guard: a term commit permanently retires every skill missing from the
+// uploaded sheet. Reads stay on the catch-all (`/competency-framework/v3/read/:id`, `/framework/v3/list`).
+//
+// validate/commit are multipart (CSV file + `framework` field). No body parser in app.ts handles
+// multipart, so req.body is unset and kongProxy streams the raw upload through untouched -
+// the same path `/asset/v1/upload/:id` already takes. download returns JSON with a `fileUrl`
+// to cloud storage, not the CSV itself, so nothing binary flows back through the proxy.
+//
+// Kong must expose these paths (see report: not yet in kong-apis.yaml).
+const frameworkAdmin = [requireAuth(), requireRole(['ORG_ADMIN']), kongProxy];
+router.post('/competency-framework/v3/create', ...frameworkAdmin);
+router.patch('/competency-framework/v3/update/:identifier', ...frameworkAdmin);
+router.post('/competency-framework/v3/publish/:identifier', ...frameworkAdmin);
+router.post('/competency-framework/v3/review/:identifier', ...frameworkAdmin);
+router.post('/competency-framework/v3/reject/:identifier', ...frameworkAdmin);
+router.delete('/competency-framework/v3/retire/:identifier', ...frameworkAdmin);
+router.post('/framework/v3/term/validate', ...frameworkAdmin);
+router.post('/framework/v3/term/commit', ...frameworkAdmin);
+router.get('/framework/v3/term/download/:framework', ...frameworkAdmin);
 
 const recaptchaProtectedRoutes: string[] = [
     '/user/v1/exists/email/:emailId',

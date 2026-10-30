@@ -1142,7 +1142,8 @@
     "tabs": {
       "changeUserRoles": "Modifier les rôles des utilisateurs",
       "userConsent": "Consentement des utilisateurs",
-      "competencyRole": "Competency Role"
+      "competencyRole": "Competency Role",
+      "skillFramework": "Skill Framework"
     },
     "disclaimer": {
       "intro": "En utilisant les fonctionnalités de gestion des utilisateurs, vous reconnaissez et acceptez les",
@@ -1266,6 +1267,84 @@
       "assigning": "Assigning…",
       "assigned": "Assigned {{role}}",
       "failed": "Could not assign that role. Check the user ID and try again."
+    },
+    "skillFramework": {
+      "intro": "Create or update a competency (skill) framework from a spreadsheet. Download a CSV, edit it in Excel or Google Sheets, upload it, check the preview, then commit and publish.",
+      "mode": {
+        "existing": "Edit an existing framework",
+        "new": "Create a new framework"
+      },
+      "frameworkId": "Framework ID",
+      "load": "Open framework",
+      "loading": "Opening…",
+      "name": "Name",
+      "code": "Code",
+      "codeHint": "Becomes the framework ID and cannot be changed later. Letters, numbers, - and _ only.",
+      "organisation": "Organisation",
+      "noOrganisation": "No organisation found for your account",
+      "description": "Description",
+      "create": "Create framework",
+      "creating": "Creating…",
+      "status": "Status: {{status}}",
+      "change": "Choose another framework",
+      "newHint": "This framework is new. Every row's Category must be a category attached to the framework; rows in any other category are rejected during validation.",
+      "steps": {
+        "download": "1. Download the spreadsheet",
+        "upload": "2. Upload your edited CSV",
+        "review": "3. Review the preview",
+        "commit": "4. Commit result",
+        "publish": "5. Publish"
+      },
+      "downloadHint": "Each row is one skill: Category, Name, Code, Associated Terms (category:code, comma-separated) and Description. Edit against the current export so nothing is dropped by accident.",
+      "downloadCurrent": "Download current skills",
+      "downloadTemplate": "Download blank template",
+      "preparing": "Preparing…",
+      "downloadReady": "Your CSV is ready — click to download",
+      "validate": "Validate (no changes saved)",
+      "validating": "Validating…",
+      "validNoWrites": "No problems found. Nothing has been saved yet — this is a preview.",
+      "invalid": "Fix the rows below and upload the file again. Nothing has been saved.",
+      "summary": {
+        "toCreate": "Will add",
+        "toUpdate": "Will update",
+        "toRetire": "Will retire",
+        "errors": "Errors",
+        "warnings": "Warnings",
+        "created": "Added",
+        "updated": "Updated",
+        "retired": "Retired"
+      },
+      "report": {
+        "row": "Row",
+        "term": "Category:Code",
+        "action": "Action",
+        "details": "Details",
+        "create": "Add",
+        "update": "Update"
+      },
+      "confirm": {
+        "title": "Confirm changes",
+        "changes": "Committing {{file}} will add {{create}}, update {{update}} and retire {{retire}} skills.",
+        "retireRule": "Any existing skill in a category that appears in this file, but whose code is missing from the file, is permanently retired. Retired codes can never be reused.",
+        "acknowledgeRetire": "I understand {{count}} skills will be permanently retired.",
+        "acknowledgeNoRetire": "I have reviewed the changes above.",
+        "commit": "Commit changes",
+        "committing": "Committing…"
+      },
+      "committed": "Changes saved. Publish the framework to make them live.",
+      "commitRejected": "Nothing was saved — the file no longer validates against the framework. Download the current skills and try again.",
+      "commitPartial": "The commit stopped part-way: some rows were saved and were not rolled back. Download the current skills, review them, and upload again.",
+      "publish": "Publish framework",
+      "publishing": "Publishing…",
+      "published": "Framework published.",
+      "errors": {
+        "editBlocked": "This framework is in review or being processed, so its skills cannot be changed right now. Try again once it is back in Draft or Live.",
+        "invalidChannel": "Your organisation could not be found. Check your account's organisation and try again.",
+        "duplicateFramework": "A framework with this code already exists. Choose a different code.",
+        "notFound": "Framework not found. Check the framework ID.",
+        "withDetail": "Something went wrong: {{detail}}",
+        "generic": "Something went wrong. Please try again."
+      }
     }
   },
   "formFields": {

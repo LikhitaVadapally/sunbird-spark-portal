@@ -111,6 +111,25 @@ describe('AxiosAdapter', () => {
     expect(thrown.message).toBe('Forbidden');
   });
 
+  it('should attach params.err and result to the thrown error so callers can render structured 4xx bodies', async () => {
+    const result = { valid: false, summary: { errors: 1 }, rows: [{ index: 0, status: 'FAILED' }] };
+    const mockResponse = {
+      data: { params: { err: 'ERR_VALIDATION_FAILED', errmsg: 'One or more rows failed validation' }, result },
+      status: 400,
+      headers: {},
+    };
+    const error: any = new Error('Bad Request');
+    error.isAxiosError = true;
+    error.response = mockResponse;
+
+    mockAxiosInstance.post.mockRejectedValue(error);
+
+    const thrown = await adapter.post('/test', {}).catch((e) => e);
+    expect(thrown.message).toBe('One or more rows failed validation');
+    expect(thrown.errCode).toBe('ERR_VALIDATION_FAILED');
+    expect(thrown.result).toEqual(result);
+  });
+
   it('should attach status code to thrown error for 5xx responses', async () => {
     const mockResponse = { data: { params: { errmsg: 'Internal Server Error' } }, status: 500, headers: {} };
     const error: any = new Error('Internal Server Error');
