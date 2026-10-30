@@ -28,14 +28,17 @@ interface SkillChipsProps {
 
 function SkillChips({ label, codes, nameOf, tone, testId }: SkillChipsProps) {
   if (codes.length === 0) return null;
+  // Same chip as "Skills you could gain next": dashed outline for a skill not yet earned.
   const chip =
-    tone === 'held' ? 'bg-sunbird-success-message-bg text-sunbird-green-dark' : 'bg-sunbird-ivory text-sunbird-gray-75';
+    tone === 'held'
+      ? 'border-sunbird-success-message/40 bg-sunbird-success-message-bg text-sunbird-green-dark'
+      : 'border-dashed border-sunbird-gray-d0 text-sunbird-gray-75';
   return (
     <div className="mt-3">
       <p className="text-xs font-medium text-sunbird-gray-75">{label}</p>
       <ul className="mt-1 flex flex-wrap gap-1.5" data-testid={testId}>
         {codes.map((code) => (
-          <li key={code} className={`rounded-full px-2 py-0.5 text-xs ${chip}`}>
+          <li key={code} className={`rounded-pill border px-2.5 py-0.5 text-xs font-medium ${chip}`}>
             {nameOf(code)}
           </li>
         ))}
