@@ -1,5 +1,8 @@
 import {
   GAP_STATUS,
+  ROLE_STATUS,
+  type AuthoredRole,
+  type AuthoredRoleWire,
   type CandidateWire,
   type CompetencyFrameworkMeta,
   type CompetencyFrameworkResponse,
@@ -8,8 +11,11 @@ import {
   type RankedCandidate,
   type Recommendation,
   type RecommendResponse,
+  type RoleDiff,
   type RoleGap,
   type RoleGapWire,
+  type RoleReadResponse,
+  type RoleWriteResponse,
   type SkillEvidence,
   type SkillEvidenceWire,
   type SkillGap,
@@ -172,5 +178,44 @@ export function normaliseFrameworkMeta(
     roleCodes: Object.keys(roles)
       .filter((code) => (roles[code] ?? []).length > 0)
       .sort((a, b) => a.localeCompare(b)),
+  };
+}
+
+// ---- role authoring ---------------------------------------------------------------------------
+
+const strings = (v: unknown): string[] =>
+  Array.isArray(v) ? v.filter((s): s is string => typeof s === 'string') : [];
+
+/** Authored roles, sorted by name. Rows without a roleId are dropped. */
+export function normaliseAuthoredRoles(response: RoleReadResponse | undefined | null): AuthoredRole[] {
+  const body = response?.roles ? response : response?.result;
+  return (body?.roles ?? [])
+    .filter((r): r is AuthoredRoleWire & { roleId: string } => typeof r?.roleId === 'string' && r.roleId !== '')
+    .map((r) => {
+      const skills = strings(r.skills);
+      return {
+        roleId: r.roleId,
+        name: r.name || r.roleId,
+        skills,
+        skillCount: typeof r.skillCount === 'number' ? r.skillCount : skills.length,
+        status: r.status === ROLE_STATUS.retired ? ROLE_STATUS.retired : ROLE_STATUS.live,
+        version: typeof r.version === 'number' ? r.version : 1,
+      };
+    })
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/** The diff an upsert or retire reports, or undefined when the body has none. */
+export function normaliseRoleDiff(response: RoleWriteResponse | undefined | null): RoleDiff | undefined {
+  const d = response?.diff ?? response?.result?.diff;
+  if (!d?.roleId) return undefined;
+  return {
+    roleId: d.roleId,
+    added: strings(d.added),
+    removed: strings(d.removed),
+    unchanged: strings(d.unchanged),
+    rejected: strings(d.rejected),
+    changed: Boolean(d.changed),
+    ...(d.retired ? { retired: true } : {}),
   };
 }

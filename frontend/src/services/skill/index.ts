@@ -8,7 +8,17 @@ export {
   normaliseGap,
   normaliseRecommendation,
   normaliseFrameworkMeta,
+  normaliseAuthoredRoles,
+  normaliseRoleDiff,
 } from './skillMappers';
+
+export {
+  groupLeafOptions,
+  filterOptionGroups,
+  toRoleCode,
+  type SkillOption,
+  type SkillOptionGroup,
+} from './roleSkillOptions';
 
 export {
   buildSkillVocabulary,

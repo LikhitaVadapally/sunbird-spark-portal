@@ -4,6 +4,9 @@ import type {
   SkillGapResponse,
   RecommendResponse,
   CompetencyFrameworkResponse,
+  RoleReadResponse,
+  RoleUpsertRequest,
+  RoleWriteResponse,
 } from '../../types/skillServiceTypes';
 
 /**
@@ -19,6 +22,7 @@ import type {
  *   POST /skill/v1/recommend
  *   POST /skill/v1/role/update
  *   GET  /competency/v1/framework/read/:frameworkId
+ *   POST /competency/v1/role/{assign,read,upsert,retire}   (admin only, checked by lern)
  *
  * `/skill/v1/coverage/read` also exists but is authoring-time, not learner-facing, so it
  * is not wired here. The `/private/*` admin routes are deliberately absent: the
@@ -85,5 +89,22 @@ export class SkillService {
     role: string;
   }): Promise<ApiResponse<unknown>> {
     return getClient().post(`${COMPETENCY}/role/assign`, { request });
+  }
+
+  // ---- role authoring (admin; lern rejects non-admin tokens) --------------------------------
+
+  /** Roles as authored, RETIRED included - unlike `frameworkRead`, which serves learners. */
+  public roleRead(request: { frameworkId: string }): Promise<ApiResponse<RoleReadResponse>> {
+    return getClient().post<RoleReadResponse>(`${COMPETENCY}/role/read`, { request });
+  }
+
+  /** Creates or replaces a role. `skills` is the FULL set; omitted skills are removed. */
+  public roleUpsert(request: RoleUpsertRequest): Promise<ApiResponse<RoleWriteResponse>> {
+    return getClient().post<RoleWriteResponse>(`${COMPETENCY}/role/upsert`, { request });
+  }
+
+  /** Retires a role. Not a delete: learners holding it keep it. */
+  public roleRetire(request: { frameworkId: string; roleId: string }): Promise<ApiResponse<RoleWriteResponse>> {
+    return getClient().post<RoleWriteResponse>(`${COMPETENCY}/role/retire`, { request });
   }
 }

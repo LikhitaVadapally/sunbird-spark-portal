@@ -114,6 +114,63 @@ export interface CompetencyFrameworkResponse extends CompetencyFrameworkBody {
   result?: CompetencyFrameworkBody;
 }
 
+// ---- wire: role authoring (admin) ------------------------------------------------------------
+
+export const ROLE_STATUS = { live: 'LIVE', retired: 'RETIRED' } as const;
+export type RoleStatus = (typeof ROLE_STATUS)[keyof typeof ROLE_STATUS];
+
+/** A role as authored in lern's `role_skill`, RETIRED included. */
+export interface AuthoredRole {
+  roleId: string;
+  name: string;
+  /** The full set of leaf skill codes the role requires. */
+  skills: string[];
+  skillCount: number;
+  status: RoleStatus;
+  version: number;
+}
+
+/** A role row as lern sends it; `status` is any string until normalised. */
+export type AuthoredRoleWire = Partial<Omit<AuthoredRole, 'status'>> & { status?: string };
+
+export interface RoleReadBody {
+  frameworkId?: string;
+  roles?: AuthoredRoleWire[];
+  count?: number;
+}
+export interface RoleReadResponse extends RoleReadBody {
+  result?: RoleReadBody;
+}
+
+/** What an upsert or retire changed. `rejected` = codes dropped because they are not leaves. */
+export interface RoleDiff {
+  roleId: string;
+  added: string[];
+  removed: string[];
+  unchanged: string[];
+  rejected: string[];
+  changed: boolean;
+  retired?: boolean;
+}
+
+export interface RoleWriteBody {
+  frameworkId?: string;
+  diff?: Partial<RoleDiff>;
+}
+export interface RoleWriteResponse extends RoleWriteBody {
+  result?: RoleWriteBody;
+}
+
+export interface RoleUpsertRequest {
+  frameworkId: string;
+  roleId: string;
+  name: string;
+  /** FULL set: anything left out is removed from the role. */
+  skills: string[];
+  /** Brings a RETIRED role back to LIVE. */
+  reactivate?: boolean;
+}
+
 // ---- view types ------------------------------------------------------------------------------
 
 export const GAP_STATUS = { met: 'MET', missing: 'MISSING' } as const;

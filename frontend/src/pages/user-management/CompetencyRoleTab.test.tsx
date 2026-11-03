@@ -1,72 +1,34 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { CompetencyRoleTab } from './CompetencyRoleTab';
-import { useSkillFrameworks, useAssignRole } from '@/hooks/useSkillProfile';
 
-vi.mock('@/hooks/useAppI18n', () => ({
-  useAppI18n: () => ({ t: (k: string, p?: Record<string, unknown>) => (p ? `${k} ${JSON.stringify(p)}` : k) }),
+vi.mock('@/hooks/useAppI18n', () => ({ useAppI18n: () => ({ t: (k: string) => k }) }));
+vi.mock('./competency-role/RoleDefinitions', () => ({
+  RoleDefinitions: ({ frameworkId }: { frameworkId: string }) => <div data-testid="defs">{frameworkId}</div>,
 }));
-vi.mock('@/hooks/useSkillProfile', () => ({
-  useSkillFrameworks: vi.fn(),
-  useAssignRole: vi.fn(),
+vi.mock('./competency-role/AssignRoleForm', () => ({
+  AssignRoleForm: ({ frameworkId }: { frameworkId: string }) => <div data-testid="assign">{frameworkId}</div>,
 }));
-
-const mutate = vi.fn();
-beforeEach(() => {
-  vi.clearAllMocks();
-  vi.mocked(useSkillFrameworks).mockReturnValue({
-    metas: {
-      fw: {
-        frameworkId: 'fw', tierLabels: [], depth: 2, leafSkills: [],
-        roles: { 'staff-nurse-icu': ['a'], 'nursing-officer': ['a', 'b'] },
-        roleNames: { 'staff-nurse-icu': 'Staff Nurse (ICU)', 'nursing-officer': 'Nursing Officer' },
-        roleCodes: ['staff-nurse-icu', 'nursing-officer'],
-      },
-    },
-    vocabularies: {},
-    isLoading: false,
-  });
-  vi.mocked(useAssignRole).mockReturnValue({
-    mutate, isPending: false, isSuccess: false, isError: false,
-  } as unknown as ReturnType<typeof useAssignRole>);
-});
-
-const renderTab = () => render(<CompetencyRoleTab frameworkIds={['fw']} />);
 
 describe('CompetencyRoleTab', () => {
-  it('lists roles by their authored name, not the code', () => {
-    renderTab();
-    expect(screen.getByText('Staff Nurse (ICU)')).toBeInTheDocument();
-    expect(screen.queryByText('staff-nurse-icu')).not.toBeInTheDocument();
-  });
-
-  it('assigns the chosen role to the entered user', () => {
-    renderTab();
-    fireEvent.change(screen.getByTestId('competency-role-user'), { target: { value: ' u1 ' } });
-    fireEvent.change(screen.getByTestId('competency-role-select'), { target: { value: 'nursing-officer' } });
-    fireEvent.click(screen.getByTestId('competency-role-assign'));
-    // trimmed: a pasted id often carries whitespace, and the server would 404 on it
-    expect(mutate).toHaveBeenCalledWith({ userId: 'u1', frameworkId: 'fw', role: 'nursing-officer' });
-  });
-
-  it('cannot submit without both a user and a role', () => {
-    renderTab();
-    expect(screen.getByTestId('competency-role-assign')).toBeDisabled();
-    fireEvent.change(screen.getByTestId('competency-role-user'), { target: { value: 'u1' } });
-    expect(screen.getByTestId('competency-role-assign')).toBeDisabled();
+  it('shows the roles section and the assign section for the framework', () => {
+    render(<CompetencyRoleTab frameworkIds={['fw']} />);
+    expect(screen.getByText('userManagement.competencyRole.roles.heading')).toBeInTheDocument();
+    expect(screen.getByText('userManagement.competencyRole.assignHeading')).toBeInTheDocument();
+    expect(screen.getByTestId('defs')).toHaveTextContent('fw');
+    expect(screen.getByTestId('assign')).toHaveTextContent('fw');
   });
 
   // One framework is the normal case; the picker would be a pointless choice of one.
   it('hides the framework picker when there is only one', () => {
-    renderTab();
+    render(<CompetencyRoleTab frameworkIds={['fw']} />);
     expect(screen.queryByTestId('competency-role-framework')).not.toBeInTheDocument();
   });
 
-  it('reports a failure rather than silently doing nothing', () => {
-    vi.mocked(useAssignRole).mockReturnValue({
-      mutate, isPending: false, isSuccess: false, isError: true,
-    } as unknown as ReturnType<typeof useAssignRole>);
-    renderTab();
-    expect(screen.getByTestId('competency-role-error')).toBeInTheDocument();
+  it('switches both sections when another framework is picked', () => {
+    render(<CompetencyRoleTab frameworkIds={['fw', 'fw2']} />);
+    fireEvent.change(screen.getByTestId('competency-role-framework'), { target: { value: 'fw2' } });
+    expect(screen.getByTestId('defs')).toHaveTextContent('fw2');
+    expect(screen.getByTestId('assign')).toHaveTextContent('fw2');
   });
 });
