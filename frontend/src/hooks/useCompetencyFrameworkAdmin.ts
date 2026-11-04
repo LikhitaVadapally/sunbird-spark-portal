@@ -11,19 +11,25 @@ import {
 /** Error thrown by the http client; `errCode`/`result` come from the Sunbird response envelope. */
 export type FrameworkApiError = Error & { status?: number; errCode?: string; result?: unknown };
 
+export interface FrameworkOption {
+  id: string;
+  name?: string;
+  status?: string;
+}
+
 /**
- * Frameworks to offer in the picker: the deployment's configured ids plus whatever composite
- * search returns for objectType CompetencyFramework. Failures and empty results are tolerated -
- * the configured ids and the free-text field keep the page usable.
+ * Frameworks to offer in the admin pickers: composite search for objectType CompetencyFramework
+ * in the admin's channel. An org can have several. A failed search yields an empty list.
  */
-export function useCompetencyFrameworkOptions(configuredIds: string[]): string[] {
+export function useCompetencyFrameworkOptions(channel?: string): FrameworkOption[] {
   const query = useQuery({
-    queryKey: ['competencyFrameworkList'],
-    queryFn: async () => (await competencyFrameworkService.list()).data?.CompetencyFramework ?? [],
+    queryKey: ['competencyFrameworkList', channel ?? ''],
+    queryFn: async () => (await competencyFrameworkService.list(channel)).data?.CompetencyFramework ?? [],
     retry: false,
   });
-  const listed = (query.data ?? []).map((f) => f.identifier).filter(Boolean);
-  return Array.from(new Set([...configuredIds, ...listed]));
+  return (query.data ?? [])
+    .filter((f) => Boolean(f.identifier))
+    .map((f) => ({ id: f.identifier, name: f.name, status: f.status }));
 }
 
 export function useReadCompetencyFramework() {

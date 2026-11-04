@@ -12,8 +12,9 @@ interface CommitConfirmProps {
 
 /**
  * The one chance to catch a mistake before it is irreversible. A term left out of the sheet is
- * not ignored - it is permanently RETIRED, and its code can never be reused - so the admin has
- * to tick a box that states the exact retire count before the commit button enables.
+ * not ignored - it is permanently RETIRED, and its code can never be reused. When the commit
+ * would retire anything, the admin must tick a box stating the exact count before the commit
+ * button enables; when it retires nothing, there is nothing to warn about and it commits directly.
  */
 export function CommitConfirm({ summary, fileName, isPending, onCommit }: CommitConfirmProps) {
   const { t } = useAppI18n();
@@ -31,28 +32,27 @@ export function CommitConfirm({ summary, fileName, isPending, onCommit }: Commit
           retire: retiring,
         })}
       </p>
-      <p
-        className={`text-sm ${retiring > 0 ? 'text-sunbird-brick font-medium' : 'text-sunbird-gray-75'}`}
-        data-testid="skill-framework-retire-warning"
-      >
-        {t('userManagement.skillFramework.confirm.retireRule')}
-      </p>
-      <label className="flex items-start gap-2 text-sm">
-        <input
-          type="checkbox"
-          className="mt-1"
-          checked={acknowledged}
-          onChange={(e) => setAcknowledged(e.target.checked)}
-          data-testid="skill-framework-acknowledge"
-        />
-        {retiring > 0
-          ? t('userManagement.skillFramework.confirm.acknowledgeRetire', { count: retiring })
-          : t('userManagement.skillFramework.confirm.acknowledgeNoRetire')}
-      </label>
+      {retiring > 0 && (
+        <>
+          <p className="text-sm text-sunbird-brick font-medium" data-testid="skill-framework-retire-warning">
+            {t('userManagement.skillFramework.confirm.retireWarning', { count: retiring })}
+          </p>
+          <label className="flex items-start gap-2 text-sm">
+            <input
+              type="checkbox"
+              className="mt-1"
+              checked={acknowledged}
+              onChange={(e) => setAcknowledged(e.target.checked)}
+              data-testid="skill-framework-acknowledge"
+            />
+            {t('userManagement.skillFramework.confirm.acknowledgeRetire', { count: retiring })}
+          </label>
+        </>
+      )}
       <div>
         <Button
           variant={retiring > 0 ? 'destructive' : 'default'}
-          disabled={!acknowledged || isPending}
+          disabled={(retiring > 0 && !acknowledged) || isPending}
           onClick={onCommit}
           data-testid="skill-framework-commit"
         >

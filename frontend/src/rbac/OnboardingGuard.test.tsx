@@ -165,6 +165,26 @@ describe('OnboardingGuard', () => {
     expect(container.querySelector('.onboarding-spinner')).not.toBeInTheDocument();
   });
 
+  it('keeps the page mounted during background refetch when onboarding is disabled', () => {
+    // Admins often have no onboardingDetails; a focus refetch must not unmount their page.
+    mockUseFormRead.mockReturnValue(formDisabled);
+    mockUseUserRead.mockReturnValue({ ...userWithoutOnboarding, isFetching: true });
+
+    const { container } = renderGuard();
+    expect(screen.getByText('Protected Content')).toBeInTheDocument();
+    expect(container.querySelector('.onboarding-spinner')).not.toBeInTheDocument();
+  });
+
+  it('keeps the page mounted when a failed form read is retried on window focus', () => {
+    // Errored queries with no data report isLoading again while refetching.
+    mockUseFormRead.mockReturnValue({ data: null, isLoading: true, isFetched: true });
+    mockUseUserRead.mockReturnValue({ ...userWithOnboarding(['{"isSkipped":true,"data":{}}']), isFetched: true });
+
+    const { container } = renderGuard();
+    expect(screen.getByText('Protected Content')).toBeInTheDocument();
+    expect(container.querySelector('.onboarding-spinner')).not.toBeInTheDocument();
+  });
+
   it('renders children when form API returns no data (fail open)', () => {
     mockUseFormRead.mockReturnValue({ data: null, isLoading: false });
 

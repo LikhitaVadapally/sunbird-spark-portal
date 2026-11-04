@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAppI18n } from '@/hooks/useAppI18n';
 import { Button } from '@/components/common/Button';
 import {
@@ -14,20 +14,40 @@ import { describeFrameworkError } from './frameworkErrors';
 
 interface TermSheetWorkflowProps {
   frameworkId: string;
+  /** The framework has no skills yet, so there is nothing to export: only the blank template is offered. */
+  isEmpty?: boolean;
   /** Blocked statuses (Review/Processing) get a banner; the server rejects the upload anyway. */
   editBlocked: boolean;
 }
 
 const stepTitle = 'font-medium text-sm';
 
-const saveBlankTemplate = (frameworkId: string) => {
-  const blob = new Blob([buildBlankTermSheet()], { type: 'text/csv;charset=utf-8;' });
+const saveBlob = (blob: Blob, fileName: string) => {
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
-  link.download = `${frameworkId}-skills.csv`;
+  link.download = fileName;
   link.click();
   URL.revokeObjectURL(url);
+};
+
+const saveBlankTemplate = (frameworkId: string) =>
+  saveBlob(new Blob([buildBlankTermSheet()], { type: 'text/csv;charset=utf-8;' }), `${frameworkId}-skills.csv`);
+
+/**
+ * Saves the exported CSV in one click: fetch it from cloud storage and save it as a file, with no
+ * new tab. Resolves false if the fetch fails (e.g. the bucket does not allow CORS), so the caller
+ * can fall back to a plain link.
+ */
+const saveExport = async (url: string, frameworkId: string): Promise<boolean> => {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return false;
+    saveBlob(await res.blob(), `${frameworkId}-skills.csv`);
+    return true;
+  } catch {
+    return false;
+  }
 };
 
 /**
@@ -38,13 +58,29 @@ const saveBlankTemplate = (frameworkId: string) => {
  * rule Knowlg does not enforce belongs - every role association must point at a LEAF skill, not
  * a grouping node - checked on the validate report before the commit is offered.
  */
-export function TermSheetWorkflow({ frameworkId, editBlocked }: TermSheetWorkflowProps) {
+export function TermSheetWorkflow({ frameworkId, isEmpty = false, editBlocked }: TermSheetWorkflowProps) {
   const { t } = useAppI18n();
   const download = useDownloadTermSheet();
   const validate = useValidateTermSheet();
   const commit = useCommitTermSheet();
   const publish = usePublishCompetencyFramework();
   const [file, setFile] = useState<File | null>(null);
+  // The export URL to offer as a link, set only when saving it directly failed.
+  const [fallbackUrl, setFallbackUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Keyed on submittedAt too, so a second click saves again even if the URL is unchanged.
+    const url = download.isSuccess ? download.data : undefined;
+    if (!url) return;
+    let cancelled = false;
+    setFallbackUrl(null);
+    saveExport(url, frameworkId).then((saved) => {
+      if (!cancelled && !saved) setFallbackUrl(url);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [download.isSuccess, download.data, download.submittedAt, frameworkId]);
 
   const report = validate.data;
   const committed = commit.data?.committed === true;
@@ -72,19 +108,24 @@ export function TermSheetWorkflow({ frameworkId, editBlocked }: TermSheetWorkflo
       )}
 
       <section className="flex flex-col gap-2">
-        <h3 className={stepTitle}>{t('userManagement.skillFramework.steps.download')}</h3>
-        <p className="text-sm text-sunbird-gray-75">{t('userManagement.skillFramework.downloadHint')}</p>
+        <h3 className={stepTitle}>{t(isEmpty ? 'userManagement.skillFramework.steps.downloadTemplate' : 'userManagement.skillFramework.steps.download')}</h3>
+        <p className="text-sm text-sunbird-gray-75">{t(isEmpty ? 'userManagement.skillFramework.templateHint' : 'userManagement.skillFramework.downloadHint')}</p>
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" disabled={download.isPending} onClick={() => download.mutate(frameworkId)} data-testid="skill-framework-download">
-            {download.isPending ? t('userManagement.skillFramework.preparing') : t('userManagement.skillFramework.downloadCurrent')}
-          </Button>
-          <Button variant="outline" onClick={() => saveBlankTemplate(frameworkId)} data-testid="skill-framework-template">
-            {t('userManagement.skillFramework.downloadTemplate')}
-          </Button>
+          {!isEmpty && (
+            <Button variant="outline" disabled={download.isPending} onClick={() => download.mutate(frameworkId)} data-testid="skill-framework-download">
+              {download.isPending ? t('userManagement.skillFramework.preparing') : t('userManagement.skillFramework.downloadCurrent')}
+            </Button>
+          )}
+          {/* Only for an empty framework: a sheet built from the blank template would retire every existing skill it leaves out. */}
+          {isEmpty && (
+            <Button variant="outline" onClick={() => saveBlankTemplate(frameworkId)} data-testid="skill-framework-template">
+              {t('userManagement.skillFramework.downloadTemplate')}
+            </Button>
+          )}
         </div>
-        {/* The CSV lives in cloud storage; a link (not window.open after an await) avoids popup blockers. */}
-        {download.data && (
-          <a className="text-sm underline text-sunbird-theme-accent" href={download.data} target="_blank" rel="noopener noreferrer" data-testid="skill-framework-download-link">
+        {/* Fallback when the file can't be fetched directly: a link (not window.open after an await) avoids popup blockers. */}
+        {fallbackUrl && (
+          <a className="text-sm underline text-sunbird-theme-accent" href={fallbackUrl} target="_blank" rel="noopener noreferrer" data-testid="skill-framework-download-link">
             {t('userManagement.skillFramework.downloadReady')}
           </a>
         )}

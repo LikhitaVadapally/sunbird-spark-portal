@@ -12,11 +12,15 @@ interface OnboardingGuardProps {
 const OnboardingGuard: React.FC<OnboardingGuardProps> = ({ children }) => {
   const { isAuthenticated } = useIsAuthenticated();
 
-  const { data: formApiData, isLoading: formLoading } = useFormRead({
+  const { data: formApiData, isLoading: formPending, isFetched: formFetched } = useFormRead({
     request: { type: 'user', subType: 'onboarding', action: 'workflow', component: 'portal' },
   });
 
-  const { data: userReadData, isLoading: userLoading, isFetching, isError: userReadError } = useUserRead();
+  const { data: userReadData, isLoading: userPending, isFetched: userFetched, isFetching, isError: userReadError } = useUserRead();
+  // A query with no data (e.g. form/read 404s) goes back to `isLoading` on every refetch, such as
+  // on window focus. Treat only the first fetch as loading, so a refetch never unmounts the page.
+  const formLoading = formPending && !formFetched;
+  const userLoading = userPending && !userFetched;
 
   // Anonymous users are never redirected to onboarding.
   if (!isAuthenticated) {
@@ -32,9 +36,11 @@ const OnboardingGuard: React.FC<OnboardingGuardProps> = ({ children }) => {
     ? onboardingDetails.length > 0
     : onboardingDetails != null;
 
-  // Wait for initial load, or for background refetch when stale cache shows incomplete.
-  // Prevents a redirect loop after the user finishes onboarding and navigates home.
-  if (formLoading || userLoading || (isFetching && !hasCompletedOnboarding)) {
+  // Wait for initial load. On a background refetch (e.g. window focus), wait only when the stale
+  // cache would send the user to onboarding: that prevents a redirect loop right after they finish
+  // it. Otherwise keep the page mounted, so a refetch never wipes the user's in-page state.
+  const wouldRedirect = isOnboardingEnabled && !hasCompletedOnboarding && !userReadError;
+  if (formLoading || userLoading || (isFetching && wouldRedirect)) {
     return (
       <div className="h-screen flex items-center justify-center bg-white">
         <span className="onboarding-spinner" />
@@ -44,7 +50,7 @@ const OnboardingGuard: React.FC<OnboardingGuardProps> = ({ children }) => {
 
   // Fail open: if the user profile API failed, let the user through rather than
   // blocking them from the app due to a temporary backend issue.
-  if (isOnboardingEnabled && !hasCompletedOnboarding && !userReadError) {
+  if (wouldRedirect) {
     return <Navigate to="/onboarding" replace />;
   }
 

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useAppI18n } from '@/hooks/useAppI18n';
 import { Button } from '@/components/common/Button';
+import { FrameworkSelect } from './FrameworkSelect';
 import {
   useCompetencyFrameworkOptions,
   useCreateCompetencyFramework,
@@ -10,7 +11,6 @@ import type { CompetencyFrameworkDetails } from '@/services/CompetencyFrameworkS
 import { describeFrameworkError } from './frameworkErrors';
 
 interface FrameworkPickerProps {
-  configuredIds: string[];
   /** The admin's root-org channel. The portal proxy sends it as X-Channel-Id, which Knowlg applies over any body value. */
   channel: string;
   orgName?: string;
@@ -22,13 +22,13 @@ const CODE_PATTERN = /^[A-Za-z0-9_-]+$/;
 const inputClass = 'rounded-lg border border-sunbird-gray-e5 bg-surface px-3 py-2';
 
 /** Step 1: pick an existing competency framework, or create a new one. */
-export function FrameworkPicker({ configuredIds, channel, orgName, onSelected }: FrameworkPickerProps) {
+export function FrameworkPicker({ channel, orgName, onSelected }: FrameworkPickerProps) {
   const { t } = useAppI18n();
-  const options = useCompetencyFrameworkOptions(configuredIds);
+  const options = useCompetencyFrameworkOptions(channel);
   const read = useReadCompetencyFramework();
   const create = useCreateCompetencyFramework();
   const [mode, setMode] = useState<'existing' | 'new'>('existing');
-  const [frameworkId, setFrameworkId] = useState(configuredIds[0] ?? '');
+  const [frameworkId, setFrameworkId] = useState('');
   const [form, setForm] = useState({ name: '', code: '', description: '' });
 
   const code = form.code.trim();
@@ -57,25 +57,25 @@ export function FrameworkPicker({ configuredIds, channel, orgName, onSelected }:
       </div>
 
       {mode === 'existing' ? (
-        <div className="flex flex-col gap-2 text-sm">
-          <label className="flex flex-col gap-1">
-            {t('userManagement.skillFramework.frameworkId')}
-            <input
-              className={inputClass}
-              list="skill-framework-options"
+        <div className="flex flex-col gap-1 text-sm">
+          <span id="skill-framework-id-label">{t('userManagement.skillFramework.frameworkId')}</span>
+          {options.length === 0 ? (
+            <p className="text-sunbird-gray-75" data-testid="skill-framework-none">{t('userManagement.skillFramework.noFrameworks')}</p>
+          ) : (
+            <FrameworkSelect
+              options={options}
               value={frameworkId}
-              onChange={(e) => setFrameworkId(e.target.value)}
-              data-testid="skill-framework-id"
+              disabled={read.isPending}
+              onChange={(id) => {
+                setFrameworkId(id);
+                load(id, false);
+              }}
+              placeholder={t('userManagement.skillFramework.chooseFramework')}
+              labelledBy="skill-framework-id-label"
+              testId="skill-framework-id"
             />
-            <datalist id="skill-framework-options">
-              {options.map((id) => <option key={id} value={id} />)}
-            </datalist>
-          </label>
-          <div>
-            <Button disabled={!frameworkId.trim() || read.isPending} onClick={() => load(frameworkId.trim(), false)} data-testid="skill-framework-load">
-              {read.isPending ? t('userManagement.skillFramework.loading') : t('userManagement.skillFramework.load')}
-            </Button>
-          </div>
+          )}
+          {read.isPending && <span className="text-xs text-sunbird-gray-75">{t('userManagement.skillFramework.loading')}</span>}
         </div>
       ) : (
         <div className="flex flex-col gap-3 text-sm">

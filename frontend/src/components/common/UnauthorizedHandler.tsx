@@ -1,8 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useAppI18n } from '../../hooks/useAppI18n';
+import { toast } from '@/hooks/useToast';
 
 // Module-level flag — survives component remounts caused by navigation bounces
 let redirectScheduled = false;
+// One 403 often comes with sibling requests failing the same way; show one toast, not several.
+const FORBIDDEN_TOAST_GAP_MS = 3000;
+let lastForbiddenToastAt = 0;
 
 const UnauthorizedHandler: React.FC = () => {
   const { t } = useAppI18n();
@@ -20,11 +24,22 @@ const UnauthorizedHandler: React.FC = () => {
 
     const handleAuthError = authErrorHandler(t('authErrorRedirectMessage'));
 
+    // 401 means the session is gone, so log out. 403 means the session is fine but this one
+    // action is not allowed (a Kong ACL or a role check): tell the user and keep them signed in.
+    // The caller still gets the rejected request and can show its own inline error.
+    const handleForbidden = () => {
+      if (redirectScheduled) return;
+      const now = Date.now();
+      if (now - lastForbiddenToastAt < FORBIDDEN_TOAST_GAP_MS) return;
+      lastForbiddenToastAt = now;
+      toast({ title: t('forbiddenMessage'), variant: 'destructive' });
+    };
+
     window.addEventListener('unauthorized', handleAuthError);
-    window.addEventListener('forbidden', handleAuthError);
+    window.addEventListener('forbidden', handleForbidden);
     return () => {
       window.removeEventListener('unauthorized', handleAuthError);
-      window.removeEventListener('forbidden', handleAuthError);
+      window.removeEventListener('forbidden', handleForbidden);
       clearTimeout(timeoutId);
     };
   }, []);

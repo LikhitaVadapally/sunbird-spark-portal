@@ -41,6 +41,7 @@
   "notFound": "المورد المطلوب غير موجود.",
   "unauthorized": "أنت غير مخول للوصول إلى هذا المورد.",
   "authErrorRedirectMessage": "ليس لديك صلاحية لتنفيذ هذا الإجراء. جارٍ تسجيل الخروج.",
+  "forbiddenMessage": "ليس لديك صلاحية لتنفيذ هذا الإجراء.",
   "title": "بوابة SunbirdEd",
   "subtitle": "منصة تعليمية حديثة وقابلة للتوسع",
   "description": "مبنية للقرن الحادي والعشرين بأحدث التقنيات",
@@ -1258,6 +1259,9 @@
       "bulkActions": "إجراءات مجمعة"
     },
     "competencyRole": {
+      "chooseFramework": "اختر إطارًا",
+      "chooseFrameworkHint": "اختر إطارًا لإدارة أدواره.",
+      "publishFirst": "انشره أولًا",
       "assignHeading": "Assign a role",
       "intro": "Assign the job role a learner is measured against — Staff Nurse (ICU), Nursing Officer. This is NOT the platform permissions set in Change User Roles. The learner's own target role is left untouched.",
       "userId": "Sunbird user ID",
@@ -1315,6 +1319,9 @@
         "new": "Create a new framework"
       },
       "frameworkId": "Framework ID",
+      "chooseFramework": "اختر إطارًا",
+      "noFrameworks": "لا توجد أطر بعد. أنشئ إطارًا للبدء.",
+      "noCategories": "لا يحتوي هذا الإطار على مستويات (فئات)، لذا سيُرفض كل صف عند الرفع. أنشئ إطارًا جديدًا من هذه الصفحة بدلًا من ذلك؛ تحصل الأطر الجديدة على مستوياتها تلقائيًا.",
       "load": "Open framework",
       "loading": "Opening…",
       "name": "Name",
@@ -1327,15 +1334,17 @@
       "creating": "Creating…",
       "status": "Status: {{status}}",
       "change": "Choose another framework",
-      "newHint": "This framework is new. Every row's Category must be a category attached to the framework; rows in any other category are rejected during validation.",
+      "newHint": "This framework has no skills yet. Download the blank template, add one row per skill, then upload it. In the Category column use: {{categories}}.",
       "steps": {
         "download": "1. Download the spreadsheet",
+        "downloadTemplate": "1. Download the template",
         "upload": "2. Upload your edited CSV",
         "review": "3. Review the preview",
         "commit": "4. Commit result",
         "publish": "5. Publish"
       },
-      "downloadHint": "Each row is one skill: Category, Name, Code, Associated Terms (category:code, comma-separated) and Description. Edit against the current export so nothing is dropped by accident.",
+      "templateHint": "It has the columns the upload expects: Category, Name, Code, Associated Terms and Description.",
+      "downloadHint": "Each row is one item: a competency area, a competency or a skill (set by the Category column). Link each item to its parent in Associated Terms (category:code). Start from the current export so nothing is left out by accident.",
       "downloadCurrent": "Download current skills",
       "downloadTemplate": "Download blank template",
       "preparing": "Preparing…",
@@ -1365,9 +1374,8 @@
       "confirm": {
         "title": "Confirm changes",
         "changes": "Committing {{file}} will add {{create}}, update {{update}} and retire {{retire}} skills.",
-        "retireRule": "Any existing skill in a category that appears in this file, but whose code is missing from the file, is permanently retired. Retired codes can never be reused.",
+        "retireWarning": "{{count}} skills are missing from your file and will be retired. This can't be undone, and their codes can't be reused.",
         "acknowledgeRetire": "I understand {{count}} skills will be permanently retired.",
-        "acknowledgeNoRetire": "I have reviewed the changes above.",
         "commit": "Commit changes",
         "committing": "Committing…"
       },

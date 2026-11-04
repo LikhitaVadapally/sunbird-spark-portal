@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import type { ReactNode } from 'react';
 import { SkillFrameworkTab } from './SkillFrameworkTab';
 import * as hooks from '@/hooks/useCompetencyFrameworkAdmin';
 
@@ -16,18 +17,32 @@ vi.mock('@/hooks/useCompetencyFrameworkAdmin', () => ({
   usePublishCompetencyFramework: vi.fn(),
 }));
 
+// Radix Select needs real pointer events; a native <select> keeps the same contract for tests.
+vi.mock('@/components/common/Select', () => ({
+  Select: ({ value, onValueChange, children }: { value: string; onValueChange: (v: string) => void; children: ReactNode }) => (
+    <select data-testid="skill-framework-id" value={value} onChange={(e) => onValueChange(e.target.value)}>
+      <option value="" />
+      {children}
+    </select>
+  ),
+  SelectTrigger: () => null,
+  SelectValue: () => null,
+  SelectContent: ({ children }: { children: ReactNode }) => <>{children}</>,
+  SelectItem: ({ value, disabled, children }: { value: string; disabled?: boolean; children: ReactNode }) => <option value={value} disabled={disabled}>{children}</option>,
+}));
+
 type Mut = { mutate: ReturnType<typeof vi.fn>; reset: ReturnType<typeof vi.fn>; isPending: boolean; isSuccess: boolean; data?: unknown; error?: unknown };
 const mut = (over: Partial<Mut> = {}): Mut => ({ mutate: vi.fn(), reset: vi.fn(), isPending: false, isSuccess: false, data: undefined, error: null, ...over });
 const asHook = (m: Mut) => m as unknown as ReturnType<typeof hooks.useValidateTermSheet>;
 
 const summary = { toCreate: 12, toUpdate: 3, toUpdateLive: 1, toUpdateDraft: 2, toRetire: 2, errors: 0, warnings: 0 };
-let read: Mut, create: Mut, validate: Mut, commit: Mut, publish: Mut;
+let read: Mut, create: Mut, download: Mut, validate: Mut, commit: Mut, publish: Mut;
 
 const setup = () => {
-  vi.mocked(hooks.useCompetencyFrameworkOptions).mockReturnValue(['fw_a']);
+  vi.mocked(hooks.useCompetencyFrameworkOptions).mockReturnValue([{ id: 'fw_a', name: 'Nursing', status: 'Live' }]);
   vi.mocked(hooks.useReadCompetencyFramework).mockReturnValue(asHook(read) as never);
   vi.mocked(hooks.useCreateCompetencyFramework).mockReturnValue(asHook(create) as never);
-  vi.mocked(hooks.useDownloadTermSheet).mockReturnValue(asHook(mut()) as never);
+  vi.mocked(hooks.useDownloadTermSheet).mockReturnValue(asHook(download) as never);
   vi.mocked(hooks.useValidateTermSheet).mockReturnValue(asHook(validate));
   vi.mocked(hooks.useCommitTermSheet).mockReturnValue(asHook(commit) as never);
   vi.mocked(hooks.usePublishCompetencyFramework).mockReturnValue(asHook(publish) as never);
@@ -35,17 +50,18 @@ const setup = () => {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  read = mut({ mutate: vi.fn((id: string, opts?: { onSuccess?: (fw: unknown) => void }) => opts?.onSuccess?.({ identifier: id, name: 'Nursing', status: 'Live' })) });
+  read = mut({ mutate: vi.fn((id: string, opts?: { onSuccess?: (fw: unknown) => void }) => opts?.onSuccess?.({ identifier: id, name: 'Nursing', status: 'Live', categories: [{ code: 'skill', terms: [{ code: 's1' }] }] })) });
   create = mut();
+  download = mut();
   validate = mut();
   commit = mut();
   publish = mut();
   setup();
 });
 
-const renderTab = () => render(<SkillFrameworkTab frameworkIds={['fw_a']} channel="ch1" orgName="Org" />);
+const renderTab = () => render(<SkillFrameworkTab channel="ch1" orgName="Org" />);
 const openFramework = () => {
-  fireEvent.click(screen.getByTestId('skill-framework-load'));
+  fireEvent.change(screen.getByTestId('skill-framework-id'), { target: { value: 'fw_a' } });
 };
 const chooseFile = () => {
   const file = new File(['csv'], 'skills.csv', { type: 'text/csv' });
@@ -92,7 +108,7 @@ describe('SkillFrameworkTab', () => {
   });
 
   it('blocks uploads while the framework is in Review', () => {
-    read.mutate = vi.fn((id: string, opts?: { onSuccess?: (fw: unknown) => void }) => opts?.onSuccess?.({ identifier: id, status: 'Review' }));
+    read.mutate = vi.fn((id: string, opts?: { onSuccess?: (fw: unknown) => void }) => opts?.onSuccess?.({ identifier: id, status: 'Review', categories: [{ code: 'skill', terms: [{ code: 's1' }] }] }));
     renderTab();
     openFramework();
     chooseFile();
@@ -151,5 +167,88 @@ describe('SkillFrameworkTab', () => {
     renderTab();
     openFramework();
     expect(screen.getByTestId('skill-framework-validate-error')).toHaveTextContent('userManagement.skillFramework.errors.editBlocked');
+  });
+
+  it('says so when there are no frameworks to pick', () => {
+    vi.mocked(hooks.useCompetencyFrameworkOptions).mockReturnValue([]);
+    render(<SkillFrameworkTab channel="ch1" />);
+    expect(screen.getByTestId('skill-framework-none')).toBeInTheDocument();
+  });
+
+  it('warns when an opened framework has no categories', () => {
+    read.mutate = vi.fn((id: string, opts?: { onSuccess?: (fw: unknown) => void }) => opts?.onSuccess?.({ identifier: id, status: 'Draft' }));
+    renderTab();
+    openFramework();
+    expect(screen.getByTestId('skill-framework-no-categories')).toBeInTheDocument();
+  });
+
+  it('saves the exported CSV in one click when it can be fetched', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, blob: () => Promise.resolve(new Blob(['csv'])) });
+    vi.stubGlobal('fetch', fetchMock);
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+    URL.createObjectURL = vi.fn(() => 'blob:x');
+    URL.revokeObjectURL = vi.fn();
+    download.isSuccess = true;
+    download.data = 'https://blob/fw_a.csv';
+    renderTab();
+    openFramework();
+    await waitFor(() => expect(click).toHaveBeenCalled());
+    expect(fetchMock).toHaveBeenCalledWith('https://blob/fw_a.csv');
+    expect(screen.queryByTestId('skill-framework-download-link')).not.toBeInTheDocument();
+    click.mockRestore();
+    vi.unstubAllGlobals();
+  });
+
+  it('falls back to a link when the export cannot be fetched', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('CORS')));
+    download.isSuccess = true;
+    download.data = 'https://blob/fw_a.csv';
+    renderTab();
+    openFramework();
+    expect(await screen.findByTestId('skill-framework-download-link')).toHaveAttribute('href', 'https://blob/fw_a.csv');
+    vi.unstubAllGlobals();
+  });
+
+  it('offers only the blank template for a new framework and names its categories', () => {
+    read.mutate = vi.fn((id: string, opts?: { onSuccess?: (fw: unknown) => void }) =>
+      opts?.onSuccess?.({ identifier: id, status: 'Draft', categories: [{ code: 'competencyarea' }, { code: 'skill' }] }));
+    create.mutate = vi.fn((_input: unknown, opts?: { onSuccess?: (id: string) => void }) => opts?.onSuccess?.('fw_new'));
+    renderTab();
+    fireEvent.click(screen.getByTestId('skill-framework-mode-new'));
+    fireEvent.change(screen.getByTestId('skill-framework-name'), { target: { value: 'New' } });
+    fireEvent.change(screen.getByTestId('skill-framework-code'), { target: { value: 'fw_new' } });
+    fireEvent.click(screen.getByTestId('skill-framework-create'));
+    expect(screen.queryByTestId('skill-framework-download')).not.toBeInTheDocument();
+    expect(screen.getByTestId('skill-framework-template')).toBeInTheDocument();
+    expect(screen.getByTestId('skill-framework-new-hint')).toHaveTextContent('competencyarea, skill');
+  });
+
+  it('offers only the current skills export for a framework that has skills', () => {
+    renderTab();
+    openFramework();
+    expect(screen.getByTestId('skill-framework-download')).toBeInTheDocument();
+    expect(screen.queryByTestId('skill-framework-template')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('skill-framework-new-hint')).not.toBeInTheDocument();
+  });
+
+  it('treats an existing framework with no skills like a new one', () => {
+    read.mutate = vi.fn((id: string, opts?: { onSuccess?: (fw: unknown) => void }) =>
+      opts?.onSuccess?.({ identifier: id, status: 'Draft', categories: [{ code: 'competency', terms: [] }, { code: 'skill' }] }));
+    renderTab();
+    openFramework();
+    expect(screen.queryByTestId('skill-framework-download')).not.toBeInTheDocument();
+    expect(screen.getByTestId('skill-framework-template')).toBeInTheDocument();
+    expect(screen.getByTestId('skill-framework-new-hint')).toHaveTextContent('competency, skill');
+  });
+
+  it('commits straight away, without a warning, when nothing will be retired', () => {
+    validate.data = { valid: true, summary: { ...summary, toRetire: 0 }, rows: [] };
+    renderTab();
+    openFramework();
+    const file = chooseFile();
+    expect(screen.queryByTestId('skill-framework-retire-warning')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('skill-framework-acknowledge')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('skill-framework-commit'));
+    expect(commit.mutate).toHaveBeenCalledWith({ frameworkId: 'fw_a', file });
   });
 });

@@ -62,18 +62,19 @@ describe('useCommitTermSheet', () => {
 });
 
 describe('useCompetencyFrameworkOptions', () => {
-  it('keeps the configured frameworks when the list API returns nothing or fails', async () => {
+  it('returns an empty list when the search fails', async () => {
     vi.mocked(competencyFrameworkService.list).mockRejectedValue(new Error('down'));
-    const { result } = renderHook(() => useCompetencyFrameworkOptions(['fw_a']), { wrapper });
-    await waitFor(() => expect(result.current).toEqual(['fw_a']));
+    const { result } = renderHook(() => useCompetencyFrameworkOptions('ch1'), { wrapper });
+    await waitFor(() => expect(competencyFrameworkService.list).toHaveBeenCalledWith('ch1'));
+    expect(result.current).toEqual([]);
   });
 
-  it('merges listed frameworks without duplicates', async () => {
+  it('maps listed frameworks to id, name and status', async () => {
     vi.mocked(competencyFrameworkService.list).mockResolvedValue({
-      data: { CompetencyFramework: [{ identifier: 'fw_a' }, { identifier: 'fw_b' }] }, status: 200, headers: {},
+      data: { CompetencyFramework: [{ identifier: 'fw_a', name: 'Agri', status: 'Live' }, { identifier: 'fw_b' }] }, status: 200, headers: {},
     });
-    const { result } = renderHook(() => useCompetencyFrameworkOptions(['fw_a']), { wrapper });
-    await waitFor(() => expect(result.current).toEqual(['fw_a', 'fw_b']));
+    const { result } = renderHook(() => useCompetencyFrameworkOptions('ch1'), { wrapper });
+    await waitFor(() => expect(result.current).toEqual([{ id: 'fw_a', name: 'Agri', status: 'Live' }, { id: 'fw_b', name: undefined, status: undefined }]));
   });
 });
 

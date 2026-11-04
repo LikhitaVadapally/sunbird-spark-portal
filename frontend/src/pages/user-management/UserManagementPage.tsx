@@ -32,10 +32,6 @@ type UMTab = {
   icon: React.ElementType;
 };
 
-// Frameworks an admin may assign roles against. A single deployment runs one competency
-// framework; this is a list so a multi-framework tenant needs no code change.
-const COMPETENCY_FRAMEWORKS = ["fw_health_competency7"];
-
 const getUmTabs = (t: (k: string) => string): UMTab[] => [
   { id: "role-management", label: t("userManagement.tabs.changeUserRoles"), icon: FiShield },
   { id: "user-consent", label: t("userManagement.tabs.userConsent"), icon: FiLock },
@@ -56,6 +52,8 @@ const UserManagementPage = () => {
   const [activeTab, setActiveTab] = useState<string>(UM_TABS[0]?.id ?? "role-management");
   const [availableRoles, setAvailableRoles] = useState<RoleItem[]>([]);
   const [tncDialogOpen, setTncDialogOpen] = useState(false);
+  // The Competency Role tab's framework, kept here so switching tabs doesn't lose it.
+  const [roleFrameworkId, setRoleFrameworkId] = useState('');
 
   /* ── Fetch orgAdminTnc; fall back to tncConfig if no URL is found ── */
   const { data: orgAdminTncConfig, isSuccess: isOrgTncSuccess } = useSystemSetting('orgAdminTnc');
@@ -233,10 +231,10 @@ const UserManagementPage = () => {
                   )}
                   {activeTab === "user-consent" && <UserConsentTab />}
                   {activeTab === "competency-role" && (
-                    <CompetencyRoleTab frameworkIds={COMPETENCY_FRAMEWORKS} />
+                    <CompetencyRoleTab channel={rootOrgChannel} frameworkId={roleFrameworkId} onFrameworkChange={setRoleFrameworkId} />
                   )}
                   {activeTab === "skill-framework" && (
-                    <SkillFrameworkTab frameworkIds={COMPETENCY_FRAMEWORKS} channel={rootOrgChannel} orgName={rootOrgName} />
+                    <SkillFrameworkTab channel={rootOrgChannel} orgName={rootOrgName} />
                   )}
                 </div>
 

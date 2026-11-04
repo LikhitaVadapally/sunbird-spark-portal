@@ -43,6 +43,16 @@ describe('CompetencyFrameworkService', () => {
     });
   });
 
+  it('scopes the list to the admin channel and asks only for picker fields', async () => {
+    await service.list('ch1');
+    expect(mockClient.post).toHaveBeenCalledWith('/composite/v1/search', {
+      request: expect.objectContaining({
+        filters: { objectType: ['CompetencyFramework'], status: ['Draft', 'Live'], channel: ['ch1'] },
+        fields: ['identifier', 'name', 'status', 'channel'],
+      }),
+    });
+  });
+
   it('attaches a category through the v1 category create route', async () => {
     await service.attachCategory('fw 1', { code: 'skill', name: 'Skill' });
     expect(mockClient.post).toHaveBeenCalledWith('/framework/v1/category/create?framework=fw%201', {

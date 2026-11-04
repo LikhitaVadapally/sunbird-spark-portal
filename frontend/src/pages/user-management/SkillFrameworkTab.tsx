@@ -3,14 +3,13 @@ import { useAppI18n } from '@/hooks/useAppI18n';
 import { Button } from '@/components/common/Button';
 import {
   FRAMEWORK_EDIT_BLOCKED_STATUSES,
+  SKILL_FRAMEWORK_CATEGORIES,
   type CompetencyFrameworkDetails,
 } from '@/services/CompetencyFrameworkService';
 import { FrameworkPicker } from './skill-framework/FrameworkPicker';
 import { TermSheetWorkflow } from './skill-framework/TermSheetWorkflow';
 
 interface SkillFrameworkTabProps {
-  /** Frameworks the deployment is configured with, offered first in the picker. */
-  frameworkIds: string[];
   /** The admin's root-org channel; a new framework belongs to it. */
   channel: string;
   orgName?: string;
@@ -25,7 +24,7 @@ interface SkillFrameworkTabProps {
  * than anything a content creator can do. The page is ORG_ADMIN-only (AppRoutes), and the
  * backend repeats that check on every write route it proxies.
  */
-export function SkillFrameworkTab({ frameworkIds, channel, orgName }: SkillFrameworkTabProps) {
+export function SkillFrameworkTab({ channel, orgName }: SkillFrameworkTabProps) {
   const { t } = useAppI18n();
   const [selected, setSelected] = useState<{ framework: CompetencyFrameworkDetails; isNew: boolean } | null>(null);
 
@@ -34,7 +33,6 @@ export function SkillFrameworkTab({ frameworkIds, channel, orgName }: SkillFrame
       <div className="flex flex-col gap-4" data-testid="skill-framework-tab">
         <p className="text-sm text-sunbird-gray-75">{t('userManagement.skillFramework.intro')}</p>
         <FrameworkPicker
-          configuredIds={frameworkIds}
           channel={channel}
           orgName={orgName}
           onSelected={(framework, isNew) => setSelected({ framework, isNew })}
@@ -45,6 +43,12 @@ export function SkillFrameworkTab({ frameworkIds, channel, orgName }: SkillFrame
 
   const { framework, isNew } = selected;
   const status = framework.status ?? '';
+  // The Category values a sheet may use: the framework's attached levels, else the ones a new framework gets.
+  const attached = (framework.categories ?? []).map((c) => c.code).filter((c): c is string => Boolean(c));
+  const categoryCodes = attached.length ? attached : SKILL_FRAMEWORK_CATEGORIES.map((c) => c.code);
+  // Nothing to export yet - just created, or opened later with no terms - so only the template is offered.
+  const hasSkills = (framework.categories ?? []).some((c) => (c.terms?.length ?? 0) > 0);
+  const isEmpty = isNew || !hasSkills;
 
   return (
     <div className="flex flex-col gap-4" data-testid="skill-framework-tab">
@@ -61,10 +65,20 @@ export function SkillFrameworkTab({ frameworkIds, channel, orgName }: SkillFrame
           {t('userManagement.skillFramework.change')}
         </Button>
       </div>
-      {isNew && <p className="text-sm text-sunbird-gray-75">{t('userManagement.skillFramework.newHint')}</p>}
+      {isEmpty && (
+        <p className="text-sm text-sunbird-gray-75" data-testid="skill-framework-new-hint">
+          {t('userManagement.skillFramework.newHint', { categories: categoryCodes.join(', ') })}
+        </p>
+      )}
+      {!isNew && (framework.categories?.length ?? 0) === 0 && (
+        <p className="rounded-lg border border-sunbird-brick p-3 text-sm text-sunbird-brick" role="alert" data-testid="skill-framework-no-categories">
+          {t('userManagement.skillFramework.noCategories')}
+        </p>
+      )}
       <TermSheetWorkflow
         key={framework.identifier}
         frameworkId={framework.identifier}
+        isEmpty={isEmpty}
         editBlocked={FRAMEWORK_EDIT_BLOCKED_STATUSES.includes(status)}
       />
     </div>

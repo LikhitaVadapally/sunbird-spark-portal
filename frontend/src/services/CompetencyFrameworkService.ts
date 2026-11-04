@@ -143,11 +143,18 @@ export class CompetencyFrameworkService {
   /**
    * Lists competency frameworks via composite search (not `/framework/v3/list`, per Knowlg).
    * Drafts are included so a newly created framework can still be opened and published.
+   * Scoped to the admin's channel when known, so other tenants' and stray test frameworks
+   * don't crowd the picker.
    */
-  public list(): Promise<ApiResponse<{ count?: number; CompetencyFramework?: CompetencyFrameworkDetails[] }>> {
+  public list(channel?: string): Promise<ApiResponse<{ count?: number; CompetencyFramework?: CompetencyFrameworkDetails[] }>> {
     return getClient().post('/composite/v1/search', {
       request: {
-        filters: { objectType: ['CompetencyFramework'], status: ['Draft', 'Live'] },
+        filters: {
+          objectType: ['CompetencyFramework'],
+          status: ['Draft', 'Live'],
+          ...(channel ? { channel: [channel] } : {}),
+        },
+        fields: ['identifier', 'name', 'status', 'channel'],
         limit: 100,
         offset: 0,
         query: '',

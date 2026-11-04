@@ -6,11 +6,15 @@ vi.mock('@/hooks/useAppI18n', () => ({
     t: (key: string) => {
       const map: Record<string, string> = {
         authErrorRedirectMessage: "You don't have access to perform this action. Logging out.",
+        forbiddenMessage: "You don't have permission to perform this action.",
       };
       return map[key] ?? key;
     },
   }),
 }));
+
+const toastMock = vi.fn();
+vi.mock('@/hooks/useToast', () => ({ toast: (...args: unknown[]) => toastMock(...args) }));
 
 describe('UnauthorizedHandler', () => {
   // Reset modules before each test so the module-level `redirectScheduled`
@@ -50,13 +54,26 @@ describe('UnauthorizedHandler', () => {
     expect(screen.getByText("You don't have access to perform this action. Logging out.")).toBeInTheDocument();
   });
 
-  it('shows message when forbidden event is dispatched', async () => {
+  it('shows a toast and does not log out when forbidden event is dispatched', async () => {
     await renderComponent();
 
     act(() => { window.dispatchEvent(new CustomEvent('forbidden')); });
+    act(() => { vi.advanceTimersByTime(5000); });
 
-    expect(screen.getByRole('dialog')).toBeInTheDocument();
-    expect(screen.getByText("You don't have access to perform this action. Logging out.")).toBeInTheDocument();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(toastMock).toHaveBeenCalledWith({ title: "You don't have permission to perform this action.", variant: 'destructive' });
+    expect(window.location.href).toBe('');
+  });
+
+  it('shows one toast for a burst of forbidden events', async () => {
+    await renderComponent();
+
+    act(() => {
+      window.dispatchEvent(new CustomEvent('forbidden'));
+      window.dispatchEvent(new CustomEvent('forbidden'));
+    });
+
+    expect(toastMock).toHaveBeenCalledTimes(1);
   });
 
   it('has correct ARIA attributes', async () => {
