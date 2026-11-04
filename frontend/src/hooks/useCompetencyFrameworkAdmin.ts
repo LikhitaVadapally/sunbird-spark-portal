@@ -1,6 +1,7 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
 import {
   competencyFrameworkService,
+  SKILL_FRAMEWORK_CATEGORIES,
   type CompetencyFrameworkDetails,
   type CreateCompetencyFrameworkInput,
   type TermCommitResult,
@@ -11,15 +12,14 @@ import {
 export type FrameworkApiError = Error & { status?: number; errCode?: string; result?: unknown };
 
 /**
- * Frameworks to offer in the picker: the deployment's configured ids plus whatever
- * `/framework/v3/list` returns. On the Knowlg branch that route is still a stub that returns
- * nothing, so failures and empty results are tolerated - the configured ids and the free-text
- * field keep the page usable.
+ * Frameworks to offer in the picker: the deployment's configured ids plus whatever composite
+ * search returns for objectType CompetencyFramework. Failures and empty results are tolerated -
+ * the configured ids and the free-text field keep the page usable.
  */
 export function useCompetencyFrameworkOptions(configuredIds: string[]): string[] {
   const query = useQuery({
     queryKey: ['competencyFrameworkList'],
-    queryFn: async () => (await competencyFrameworkService.list()).data?.frameworks ?? [],
+    queryFn: async () => (await competencyFrameworkService.list()).data?.CompetencyFramework ?? [],
     retry: false,
   });
   const listed = (query.data ?? []).map((f) => f.identifier).filter(Boolean);
@@ -35,9 +35,22 @@ export function useReadCompetencyFramework() {
   });
 }
 
+/**
+ * Creates the framework, then attaches its category levels one by one, top level first (Knowlg
+ * keeps them in attach order). A level that is already attached is skipped, so retrying after a
+ * partial failure is safe.
+ */
 export function useCreateCompetencyFramework() {
   return useMutation<string, FrameworkApiError, CreateCompetencyFrameworkInput>({
-    mutationFn: async (input) => (await competencyFrameworkService.create(input)).data?.node_id ?? input.code,
+    mutationFn: async (input) => {
+      const id = (await competencyFrameworkService.create(input)).data?.node_id ?? input.code;
+      for (const category of SKILL_FRAMEWORK_CATEGORIES) {
+        await competencyFrameworkService.attachCategory(id, category).catch((e: FrameworkApiError) => {
+          if (e?.errCode !== 'ERR_DUPLICATE_CODE') throw e;
+        });
+      }
+      return id;
+    },
   });
 }
 

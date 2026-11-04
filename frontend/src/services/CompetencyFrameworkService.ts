@@ -15,7 +15,8 @@ import { getClient, ApiResponse } from '../lib/http-client';
  *   POST  /competency-framework/v3/create              { request: { competencyFramework: {...} } }
  *   GET   /competency-framework/v3/read/:id            -> result.framework
  *   POST  /competency-framework/v3/publish/:id         channel comes from X-Channel-Id
- *   POST  /framework/v3/list                           (a stub on that branch - returns no frameworks)
+ *   POST  /framework/v1/category/create?framework=  attach a master category (knowledge-mw -> Knowlg)
+ *   POST  /composite/v1/search                         objectType CompetencyFramework -> result.CompetencyFramework
  *   GET   /framework/v3/term/download/:framework       -> result.fileUrl (a cloud-storage CSV link)
  *   POST  /framework/v3/term/validate                  multipart: framework + file (dry run)
  *   POST  /framework/v3/term/commit                    multipart: framework + file (writes)
@@ -29,6 +30,16 @@ const FRAMEWORK = '/framework/v3';
 
 /** The exact columns TermSheetReader.REQUIRED_HEADERS expects, in download order. */
 export const TERM_SHEET_HEADERS = ['Category', 'Name', 'Code', 'Associated Terms', 'Description'] as const;
+
+/**
+ * Levels a new skill framework gets, top to bottom. Each must exist as a Knowlg master category;
+ * a term sheet row is rejected ("Category ... is not attached") unless its category is attached.
+ */
+export const SKILL_FRAMEWORK_CATEGORIES = [
+  { code: 'competencyarea', name: 'Competency Area' },
+  { code: 'competency', name: 'Competency' },
+  { code: 'skill', name: 'Skill' },
+] as const;
 
 /** Statuses during which Knowlg rejects term validate/commit (FrameworkManager.assertFrameworkEditable). */
 export const FRAMEWORK_EDIT_BLOCKED_STATUSES = ['Review', 'Processing'];
@@ -114,6 +125,13 @@ export class CompetencyFrameworkService {
     return getClient().post(`${COMPETENCY_FRAMEWORK}/create`, { request: { competencyFramework: input } });
   }
 
+  /** Attaches a master category to the framework (creates the framework's own category instance). */
+  public attachCategory(frameworkId: string, category: { code: string; name: string }): Promise<ApiResponse<{ identifier?: string }>> {
+    return getClient().post(`/framework/v1/category/create?framework=${encodeURIComponent(frameworkId)}`, {
+      request: { category },
+    });
+  }
+
   public read(frameworkId: string): Promise<ApiResponse<{ framework: CompetencyFrameworkDetails }>> {
     return getClient().get(`${COMPETENCY_FRAMEWORK}/read/${encodeURIComponent(frameworkId)}`);
   }
@@ -122,8 +140,20 @@ export class CompetencyFrameworkService {
     return getClient().post(`${COMPETENCY_FRAMEWORK}/publish/${encodeURIComponent(frameworkId)}`, { request: {} });
   }
 
-  public list(): Promise<ApiResponse<{ frameworks?: CompetencyFrameworkDetails[] }>> {
-    return getClient().post(`${FRAMEWORK}/list`, { request: { search: { objectType: 'CompetencyFramework' } } });
+  /**
+   * Lists competency frameworks via composite search (not `/framework/v3/list`, per Knowlg).
+   * Drafts are included so a newly created framework can still be opened and published.
+   */
+  public list(): Promise<ApiResponse<{ count?: number; CompetencyFramework?: CompetencyFrameworkDetails[] }>> {
+    return getClient().post('/composite/v1/search', {
+      request: {
+        filters: { objectType: ['CompetencyFramework'], status: ['Draft', 'Live'] },
+        limit: 100,
+        offset: 0,
+        query: '',
+        sort_by: { lastUpdatedOn: 'desc' },
+      },
+    });
   }
 
   public downloadTerms(frameworkId: string): Promise<ApiResponse<TermDownloadResult>> {

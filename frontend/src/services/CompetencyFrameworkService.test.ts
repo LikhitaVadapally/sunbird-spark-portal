@@ -33,6 +33,23 @@ describe('CompetencyFrameworkService', () => {
     expect(mockClient.post).toHaveBeenCalledWith('/competency-framework/v3/publish/fw1', { request: {} });
   });
 
+  it('lists draft and live competency frameworks via composite search', async () => {
+    await service.list();
+    expect(mockClient.post).toHaveBeenCalledWith('/composite/v1/search', {
+      request: expect.objectContaining({
+        filters: { objectType: ['CompetencyFramework'], status: ['Draft', 'Live'] },
+        sort_by: { lastUpdatedOn: 'desc' },
+      }),
+    });
+  });
+
+  it('attaches a category through the v1 category create route', async () => {
+    await service.attachCategory('fw 1', { code: 'skill', name: 'Skill' });
+    expect(mockClient.post).toHaveBeenCalledWith('/framework/v1/category/create?framework=fw%201', {
+      request: { category: { code: 'skill', name: 'Skill' } },
+    });
+  });
+
   it('asks for the term export of a framework', async () => {
     await service.downloadTerms('fw1');
     expect(mockClient.get).toHaveBeenCalledWith('/framework/v3/term/download/fw1');

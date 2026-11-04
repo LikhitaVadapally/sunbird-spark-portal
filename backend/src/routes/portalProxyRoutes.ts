@@ -77,6 +77,8 @@ router.get('/summary/v1/download/:userId', requireAuth(), requireOwnUserId, kong
 // Kong must expose these paths (see report: not yet in kong-apis.yaml).
 const frameworkAdmin = [requireAuth(), requireRole(['ORG_ADMIN']), kongProxy];
 router.post('/competency-framework/v3/create', ...frameworkAdmin);
+// Attaches a category level to a new framework (Kong -> knowledge-mw -> Knowlg).
+router.post('/framework/v1/category/create', ...frameworkAdmin);
 router.patch('/competency-framework/v3/update/:identifier', ...frameworkAdmin);
 router.post('/competency-framework/v3/publish/:identifier', ...frameworkAdmin);
 router.post('/competency-framework/v3/review/:identifier', ...frameworkAdmin);

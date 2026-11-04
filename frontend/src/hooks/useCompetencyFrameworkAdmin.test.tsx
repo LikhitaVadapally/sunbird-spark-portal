@@ -2,7 +2,7 @@ import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, waitFor, act } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { useValidateTermSheet, useCommitTermSheet, useCompetencyFrameworkOptions } from './useCompetencyFrameworkAdmin';
+import { useValidateTermSheet, useCommitTermSheet, useCompetencyFrameworkOptions, useCreateCompetencyFramework } from './useCompetencyFrameworkAdmin';
 import { competencyFrameworkService } from '@/services/CompetencyFrameworkService';
 
 vi.mock('@/services/CompetencyFrameworkService', async (orig) => {
@@ -11,6 +11,8 @@ vi.mock('@/services/CompetencyFrameworkService', async (orig) => {
     ...actual,
     competencyFrameworkService: {
       list: vi.fn(),
+      create: vi.fn(),
+      attachCategory: vi.fn(),
       validateTerms: vi.fn(),
       commitTerms: vi.fn(),
     },
@@ -68,9 +70,46 @@ describe('useCompetencyFrameworkOptions', () => {
 
   it('merges listed frameworks without duplicates', async () => {
     vi.mocked(competencyFrameworkService.list).mockResolvedValue({
-      data: { frameworks: [{ identifier: 'fw_a' }, { identifier: 'fw_b' }] }, status: 200, headers: {},
+      data: { CompetencyFramework: [{ identifier: 'fw_a' }, { identifier: 'fw_b' }] }, status: 200, headers: {},
     });
     const { result } = renderHook(() => useCompetencyFrameworkOptions(['fw_a']), { wrapper });
     await waitFor(() => expect(result.current).toEqual(['fw_a', 'fw_b']));
+  });
+});
+
+describe('useCreateCompetencyFramework', () => {
+  const input = { name: 'Agri', code: 'fw_agri', channel: 'ch1' };
+  const ok = { data: {}, status: 200, headers: {} };
+
+  it('attaches competencyarea, competency and skill in that order after creating', async () => {
+    vi.mocked(competencyFrameworkService.create).mockResolvedValue({ data: { node_id: 'fw_agri' }, status: 200, headers: {} });
+    vi.mocked(competencyFrameworkService.attachCategory).mockResolvedValue(ok);
+    const { result } = renderHook(() => useCreateCompetencyFramework(), { wrapper });
+    act(() => result.current.mutate(input));
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data).toBe('fw_agri');
+    expect(vi.mocked(competencyFrameworkService.attachCategory).mock.calls.map(([id, c]) => `${id}:${c.code}`)).toEqual([
+      'fw_agri:competencyarea', 'fw_agri:competency', 'fw_agri:skill',
+    ]);
+  });
+
+  it('skips a level that is already attached', async () => {
+    vi.mocked(competencyFrameworkService.create).mockResolvedValue({ data: { node_id: 'fw_agri' }, status: 200, headers: {} });
+    vi.mocked(competencyFrameworkService.attachCategory)
+      .mockRejectedValueOnce(apiError({ status: 400, errCode: 'ERR_DUPLICATE_CODE' }))
+      .mockResolvedValue(ok);
+    const { result } = renderHook(() => useCreateCompetencyFramework(), { wrapper });
+    act(() => result.current.mutate(input));
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(competencyFrameworkService.attachCategory).toHaveBeenCalledTimes(3);
+  });
+
+  it('fails when a level cannot be attached', async () => {
+    vi.mocked(competencyFrameworkService.create).mockResolvedValue({ data: { node_id: 'fw_agri' }, status: 200, headers: {} });
+    vi.mocked(competencyFrameworkService.attachCategory).mockRejectedValue(apiError({ status: 400, errCode: 'ERR_CATEGORY_NOT_FOUND' }));
+    const { result } = renderHook(() => useCreateCompetencyFramework(), { wrapper });
+    act(() => result.current.mutate(input));
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(result.current.error?.errCode).toBe('ERR_CATEGORY_NOT_FOUND');
   });
 });
