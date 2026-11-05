@@ -1,0 +1,122 @@
+import { frameworkCategories, type SkillVocabulary, type TierNode, type TaxonomyFrameworkResponse } from './skillTree';
+
+/** A term as the competency framework read returns it; only the fields the walks need. */
+interface LeafTermWire {
+  identifier?: string;
+  code?: string;
+  name?: string;
+  category?: string;
+  children?: LeafTermWire[];
+  associations?: Array<{ identifier?: string; category?: string }>;
+  parentCode?: string;
+  parents?: Array<{ code?: string }>;
+}
+
+type CategoryWire = { code?: string; index?: number; terms?: LeafTermWire[] };
+
+const ROOT_CATEGORY = 'competency';
+
+/** The way down from a term: `children`, else associations that leave its own category. */
+function treeOf(categories: CategoryWire[]) {
+  const index = new Map<string, LeafTermWire>();
+  categories.forEach((c) => (c.terms ?? []).forEach((t) => t.identifier && index.set(t.identifier, t)));
+  const resolve = (t: LeafTermWire) => (t.identifier && index.get(t.identifier)) || t;
+  const descendants = (t: LeafTermWire, seen: Set<string>): LeafTermWire[] => {
+    if (t.children?.length) return t.children.map(resolve);
+    const own = t.category ?? '';
+    return (t.associations ?? []).flatMap((a) => {
+      if (!a.category || a.category === own || !a.identifier || seen.has(a.identifier)) return [];
+      const target = index.get(a.identifier);
+      return target ? [target] : [];
+    });
+  };
+  return { descendants };
+}
+
+/**
+ * The framework's skills (leaf codes), worked out the way lern does it
+ * (`CompetencyFrameworkUtil.parseTree`), so the role editor offers exactly what lern accepts.
+ *
+ * lern's `role/list` no longer returns `leafSkills`, so the portal reads them from the framework.
+ * The walk starts at the `competency` category and accepts all three authoring shapes:
+ *   1. `children`      - tiers nested inside the `competency` category;
+ *   2. `associations`  - tiers in separate categories (competencyarea / competency / skill). Only
+ *                        associations that LEAVE the term's own category are followed, and each hop
+ *                        is looked up by identifier, because association entries are shallow;
+ *   3. `parentCode`    - a flat list: a code nobody names as its parent is a leaf.
+ */
+export function frameworkLeaves(body: TaxonomyFrameworkResponse | undefined | null): string[] {
+  const categories = frameworkCategories(body) as CategoryWire[];
+  const roots = categories.find((c) => c.code === ROOT_CATEGORY)?.terms ?? [];
+  if (roots.length === 0) return [];
+  const { descendants } = treeOf(categories);
+
+  const leaves = new Set<string>();
+  let maxTier = 0;
+  const walk = (t: LeafTermWire, tier: number, seen: Set<string>) => {
+    if (t.identifier && seen.has(t.identifier)) return;
+    const nextSeen = t.identifier ? new Set(seen).add(t.identifier) : seen;
+    const next = descendants(t, nextSeen);
+    if (next.length === 0) {
+      if (t.code) leaves.add(t.code);
+      maxTier = Math.max(maxTier, tier);
+    } else next.forEach((n) => walk(n, tier + 1, nextSeen));
+  };
+  roots.forEach((r) => walk(r, 1, new Set()));
+  if (maxTier > 1) return [...leaves].sort();
+
+  // Flat shape: anything that is nobody's parent is a leaf.
+  const parentOf = new Map<string, string>();
+  roots.forEach((t) => {
+    const parent = t.parentCode ?? t.parents?.find((p) => p.code)?.code;
+    if (t.code && parent) parentOf.set(t.code, parent);
+  });
+  if (parentOf.size === 0) return [...leaves].sort();
+  const parents = new Set(parentOf.values());
+  return roots
+    .map((t) => t.code)
+    .filter((c): c is string => Boolean(c) && !parents.has(c as string))
+    .sort();
+}
+
+/**
+ * Names and grouping for the role editor, from the same `/competency-framework/v3/read` response.
+ *
+ * `buildSkillVocabulary` reads `/framework/v1/read`, which answers 404 for `CompetencyFramework`
+ * objects, and follows only `children`. Here every term contributes its authored name, and each
+ * skill's path is walked from the TOP category (e.g. competency area) through associations or
+ * children, so `path[0]` is the outermost tier the picker groups by.
+ */
+export function frameworkVocabulary(
+  frameworkId: string,
+  body: TaxonomyFrameworkResponse | undefined | null
+): SkillVocabulary {
+  const categories = frameworkCategories(body) as CategoryWire[];
+  const labels: Record<string, string> = {};
+  const record = (t: LeafTermWire) => {
+    if (t.code && t.name) labels[t.code] = t.name;
+    (t.children ?? []).forEach(record);
+  };
+  categories.forEach((c) => (c.terms ?? []).forEach(record));
+
+  const leafCodes = new Set(frameworkLeaves(body));
+  const leaves: SkillVocabulary['leaves'] = {};
+  const top = [...categories].sort((a, b) => (a.index ?? 0) - (b.index ?? 0))[0];
+  const { descendants } = treeOf(categories);
+  const walk = (t: LeafTermWire, ancestors: TierNode[], seen: Set<string>) => {
+    if (!t.code || (t.identifier && seen.has(t.identifier))) return;
+    const nextSeen = t.identifier ? new Set(seen).add(t.identifier) : seen;
+    if (leafCodes.has(t.code)) {
+      if (!leaves[t.code]) leaves[t.code] = { code: t.code, name: labels[t.code] ?? t.code, path: ancestors };
+      return;
+    }
+    const node = { code: t.code, name: labels[t.code] ?? t.code, depth: ancestors.length };
+    descendants(t, nextSeen).forEach((n) => walk(n, [...ancestors, node], nextSeen));
+  };
+  (top?.terms ?? []).forEach((t) => walk(t, [], new Set()));
+  // Skills the top-down walk did not reach still get their name, just no group.
+  leafCodes.forEach((code) => {
+    if (!leaves[code]) leaves[code] = { code, name: labels[code] ?? code, path: [] };
+  });
+  return { frameworkId, labels, leaves };
+}

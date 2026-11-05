@@ -15,7 +15,7 @@ export interface SkillOptionGroup {
 /**
  * The skills a role may require, grouped for the picker.
  *
- * `leafSkills` comes from lern's resolved framework read and is the authority on WHICH codes are
+ * `leafSkills` comes from the framework (`frameworkLeaves`, lern's own rule) and decides WHICH codes are
  * allowed: lern rejects any non-leaf, so offering only these means `rejected` should stay empty.
  * Names and grouping come from the taxonomy tree, which lern does not return.
  *

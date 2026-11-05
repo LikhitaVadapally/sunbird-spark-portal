@@ -112,7 +112,15 @@ export function useSkillFrameworks(frameworkIds: string[]): {
   const metaQueries = useQueries({
     queries: ids.map((id) => ({
       queryKey: ['competencyFrameworkV2', id],
-      queryFn: async () => normaliseFrameworkMeta((await skillService.frameworkRead(id)).data),
+      queryFn: async () => {
+        try {
+          return normaliseFrameworkMeta((await skillService.frameworkRead(id)).data);
+        } catch (err) {
+          // role/list answers 404 when the framework has no roles yet: that is "no roles", not a failure.
+          if ((err as { status?: number }).status === 404) return normaliseFrameworkMeta({ frameworkId: id });
+          throw err;
+        }
+      },
       enabled: Boolean(id),
     })),
   });

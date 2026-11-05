@@ -5,7 +5,7 @@ import { Button } from '@/components/common/Button';
 import { Badge } from '@/components/common/Badge';
 import { SwitchRow } from '@/components/common/Switch';
 import ConfirmDialog from '@/components/common/ConfirmDialog';
-import { useSkillFrameworks } from '@/hooks/useSkillProfile';
+import { useFrameworkLeaves } from '@/hooks/useFrameworkLeaves';
 import { useAuthoredRoles, useRetireRole, useUpsertRole } from '@/hooks/useRoleAuthoring';
 import { groupLeafOptions } from '@/services/skill';
 import { ROLE_STATUS, type AuthoredRole } from '@/types/skillServiceTypes';
@@ -25,7 +25,8 @@ export function RoleDefinitions({ frameworkId }: RoleDefinitionsProps) {
   const { t } = useAppI18n();
   const { toast } = useToast();
   const { roles, isLoading, isError } = useAuthoredRoles(frameworkId);
-  const { metas, vocabularies } = useSkillFrameworks(frameworkId ? [frameworkId] : []);
+  // lern's role/list no longer lists the skills, so they (and their names) come from the framework.
+  const { leaves: leafSkills, vocabulary, isLoaded: leavesLoaded } = useFrameworkLeaves(frameworkId);
   const retire = useRetireRole(frameworkId);
   const reactivate = useUpsertRole(frameworkId);
 
@@ -33,14 +34,13 @@ export function RoleDefinitions({ frameworkId }: RoleDefinitionsProps) {
   const [editor, setEditor] = useState<EditorState>({ open: false });
   const [retireTarget, setRetireTarget] = useState<AuthoredRole | null>(null);
 
-  const leafSkills = useMemo(() => metas[frameworkId]?.leafSkills ?? [], [metas, frameworkId]);
   const groups = useMemo(
-    () => groupLeafOptions(leafSkills, vocabularies[frameworkId]),
-    [leafSkills, vocabularies, frameworkId]
+    () => groupLeafOptions(leafSkills, vocabulary),
+    [leafSkills, vocabulary]
   );
   const shown = showRetired ? roles : roles.filter((r) => r.status === ROLE_STATUS.live);
   const retiredCount = roles.length - roles.filter((r) => r.status === ROLE_STATUS.live).length;
-  const noSkills = Boolean(metas[frameworkId]) && leafSkills.length === 0;
+  const noSkills = leavesLoaded && leafSkills.length === 0;
 
   const failed = (err: Error) =>
     toast({ title: t('userManagement.competencyRole.roles.actionFailed'), description: err.message, variant: 'destructive' });

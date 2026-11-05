@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { RoleDefinitions } from './RoleDefinitions';
 import { useAuthoredRoles, useRetireRole, useUpsertRole } from '@/hooks/useRoleAuthoring';
-import { useSkillFrameworks } from '@/hooks/useSkillProfile';
+import { useFrameworkLeaves } from '@/hooks/useFrameworkLeaves';
 import type { AuthoredRole } from '@/types/skillServiceTypes';
 
 vi.mock('@/hooks/useAppI18n', () => ({
@@ -15,7 +15,7 @@ vi.mock('@/hooks/useRoleAuthoring', () => ({
   useRetireRole: vi.fn(),
   useUpsertRole: vi.fn(),
 }));
-vi.mock('@/hooks/useSkillProfile', () => ({ useSkillFrameworks: vi.fn() }));
+vi.mock('@/hooks/useFrameworkLeaves', () => ({ useFrameworkLeaves: vi.fn() }));
 vi.mock('./RoleEditor', () => ({
   RoleEditor: ({ role }: { role?: AuthoredRole }) => <div data-testid="editor">{role?.roleId ?? 'new'}</div>,
 }));
@@ -27,12 +27,9 @@ const upsertMutate = vi.fn();
 
 const setRoles = (over: Partial<ReturnType<typeof useAuthoredRoles>> = {}) =>
   vi.mocked(useAuthoredRoles).mockReturnValue({ roles: [live, retired], isLoading: false, isError: false, ...over });
-const setLeaves = (leafSkills: string[]) =>
-  vi.mocked(useSkillFrameworks).mockReturnValue({
-    metas: { fw: { frameworkId: 'fw', tierLabels: [], depth: 2, leafSkills, roles: {}, roleNames: {}, roleCodes: [] } },
-    vocabularies: {},
-    isLoading: false,
-  });
+// Skills come from the framework itself (lern's role/list no longer lists them).
+const setLeaves = (leaves: string[], isLoaded = true) =>
+  vi.mocked(useFrameworkLeaves).mockReturnValue({ leaves, vocabulary: undefined, isLoaded });
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -105,5 +102,11 @@ describe('RoleDefinitions', () => {
     renderDefs();
     expect(screen.getByText('userManagement.competencyRole.roles.noFrameworkSkills')).toBeInTheDocument();
     expect(screen.getByTestId('role-new')).toBeDisabled();
+  });
+
+  it('does not warn about missing skills while the framework is still loading', () => {
+    setLeaves([], false);
+    renderDefs();
+    expect(screen.queryByText('userManagement.competencyRole.roles.noFrameworkSkills')).not.toBeInTheDocument();
   });
 });

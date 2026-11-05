@@ -21,7 +21,7 @@ import type {
  *   POST /skill/v1/gap/read
  *   POST /skill/v1/recommend
  *   POST /skill/v1/role/update
- *   GET  /competency/v1/framework/read/:frameworkId
+ *   GET  /competency/v1/role/list/:frameworkId   (404 when the framework has no roles)
  *   POST /competency/v1/role/{assign,read,upsert,retire}   (admin only, checked by lern)
  *
  * `/skill/v1/coverage/read` also exists but is authoring-time, not learner-facing, so it
@@ -70,10 +70,10 @@ export class SkillService {
     return getClient().post(`${SKILL}/role/update`, { request });
   }
 
-  /** Resolved framework: tier labels, the flat leaf list, and each role's required set. */
+  /** Live roles and the skills each requires, plus every role's name. 404 when there are no roles. */
   public frameworkRead(frameworkId: string): Promise<ApiResponse<CompetencyFrameworkResponse>> {
     return getClient().get<CompetencyFrameworkResponse>(
-      `${COMPETENCY}/framework/read/${encodeURIComponent(frameworkId)}`
+      `${COMPETENCY}/role/list/${encodeURIComponent(frameworkId)}`
     );
   }
 
