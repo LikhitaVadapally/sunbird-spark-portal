@@ -14,10 +14,28 @@ import {
   type TaxonomyFrameworkResponse,
 } from '@/services/skill';
 import { FrameworkService } from '@/services/FrameworkService';
+import { CompetencyFrameworkService } from '@/services/CompetencyFrameworkService';
+import { frameworkVocabulary } from '@/services/skill/skillLeaves';
 import { useUserId } from './useAuthInfo';
 import type { CompetencyFrameworkMeta, HeldSkill } from '@/types/skillServiceTypes';
 
 const frameworkService = new FrameworkService();
+const competencyFrameworkService = new CompetencyFrameworkService();
+
+/**
+ * A framework's names and tree, whichever kind it is. `/framework/v1/read` serves the older
+ * taxonomy frameworks (e.g. USF) but answers 404 for `CompetencyFramework` objects, which only
+ * `/competency-framework/v3/read` serves - so a 404 falls back to that read.
+ */
+async function readSkillVocabulary(id: string): Promise<SkillVocabulary> {
+  try {
+    return buildSkillVocabulary(id, (await frameworkService.read<TaxonomyFrameworkResponse>(id)).data);
+  } catch (err) {
+    if ((err as { status?: number }).status !== 404) throw err;
+    const res = await competencyFrameworkService.read(id);
+    return frameworkVocabulary(id, res.data as TaxonomyFrameworkResponse);
+  }
+}
 const NO_SKILLS: HeldSkill[] = [];
 
 /**
@@ -57,9 +75,8 @@ export function useSkillProfile() {
  *
  * Display names and the parent term ("Infection Prevention") live only on the taxonomy
  * framework's nested terms, so this is the one read the learner side needs. Split out of
- * `useSkillFrameworks` because the competency read there (tiers, roles) is admin-only now that
- * role readiness is hidden from learners. Shares its cache key with `useSkillFrameworks`, so
- * the admin screen and the learner pages never read the same tree twice.
+ * `useSkillFrameworks`, which loads only roles. Older taxonomy frameworks and new
+ * `CompetencyFramework` objects are both read - see `readSkillVocabulary`.
  */
 export function useSkillVocabularies(frameworkIds: string[]): {
   vocabularies: Record<string, SkillVocabulary | undefined>;
@@ -69,8 +86,8 @@ export function useSkillVocabularies(frameworkIds: string[]): {
 
   const treeQueries = useQueries({
     queries: ids.map((id) => ({
-      queryKey: ['framework', id],
-      queryFn: () => frameworkService.read<TaxonomyFrameworkResponse>(id),
+      queryKey: ['skillVocabulary', id],
+      queryFn: () => readSkillVocabulary(id),
       enabled: Boolean(id),
       // A framework changes on publish, not per session; refetching it on every focus only
       // re-flashes the skeleton.
@@ -81,7 +98,7 @@ export function useSkillVocabularies(frameworkIds: string[]): {
   const vocabularies = useMemo(() => {
     const out: Record<string, SkillVocabulary | undefined> = {};
     ids.forEach((id, i) => {
-      out[id] = buildSkillVocabulary(id, treeQueries[i]?.data?.data);
+      out[id] = treeQueries[i]?.data;
     });
     return out;
   }, [ids, treeQueries]);
@@ -115,16 +132,14 @@ export function useSkillLabels(frameworkIds: string[]): {
 }
 
 /**
- * Resolved framework meta plus the skill tree, for every framework given.
+ * Each framework's roles (lern `role/list`): live roles, their skills and role names.
  *
- * TWO READS PER FRAMEWORK, deliberately. The competency read gives tier labels, the flat
- * leaf list and each role's required set, but NO tree and NO display names - those live on
- * the taxonomy framework's nested terms (see `useSkillVocabularies`). `useQueries` because the
- * framework count is data-dependent.
+ * Names and the skill tree are not loaded here - every caller needs only the roles; use
+ * `useSkillVocabularies` / `useSkillLabels` for names. `useQueries` because the framework count
+ * is data-dependent.
  */
 export function useSkillFrameworks(frameworkIds: string[]): {
   metas: Record<string, CompetencyFrameworkMeta | undefined>;
-  vocabularies: Record<string, SkillVocabulary | undefined>;
   isLoading: boolean;
 } {
   const ids = useMemo(() => Array.from(new Set(frameworkIds.filter(Boolean))).sort(), [frameworkIds]);
@@ -144,7 +159,6 @@ export function useSkillFrameworks(frameworkIds: string[]): {
       enabled: Boolean(id),
     })),
   });
-  const { vocabularies, isLoading: treeLoading } = useSkillVocabularies(ids);
 
   const metas = useMemo(() => {
     const out: Record<string, CompetencyFrameworkMeta | undefined> = {};
@@ -154,11 +168,7 @@ export function useSkillFrameworks(frameworkIds: string[]): {
     return out;
   }, [ids, metaQueries]);
 
-  return {
-    metas,
-    vocabularies,
-    isLoading: metaQueries.some((q) => q.isLoading) || treeLoading,
-  };
+  return { metas, isLoading: metaQueries.some((q) => q.isLoading) };
 }
 
 /**

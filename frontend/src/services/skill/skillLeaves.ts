@@ -118,5 +118,13 @@ export function frameworkVocabulary(
   leafCodes.forEach((code) => {
     if (!leaves[code]) leaves[code] = { code, name: labels[code] ?? code, path: [] };
   });
-  return { frameworkId, labels, leaves };
+  // Lower-cased skill name -> code, for content tagged by name; a name two skills share maps to neither.
+  const names: Record<string, string | null> = {};
+  Object.values(leaves).forEach(({ code, name }) => {
+    const key = name.trim().toLowerCase();
+    names[key] = names[key] === undefined || names[key] === code ? code : null;
+  });
+  const codeByName: Record<string, string> = {};
+  Object.entries(names).forEach(([key, code]) => code && (codeByName[key] = code));
+  return { frameworkId, labels, leaves, codeByName };
 }

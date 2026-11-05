@@ -2,9 +2,10 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
-import { useSkillFrameworks } from './useSkillProfile';
+import { useSkillFrameworks, useSkillVocabularies } from './useSkillProfile';
 import { skillService } from '@/services/skill';
 import { FrameworkService } from '@/services/FrameworkService';
+import { CompetencyFrameworkService } from '@/services/CompetencyFrameworkService';
 
 // lern's role/list answers 404 when a framework has no roles yet; that must read as "no roles".
 const wrapper = ({ children }: { children: ReactNode }) => (
@@ -44,5 +45,32 @@ describe('useSkillFrameworks with role/list', () => {
     const { result } = renderHook(() => useSkillFrameworks(['fw']), { wrapper });
     await waitFor(() => expect(result.current.isLoading).toBe(false));
     expect(result.current.metas.fw).toBeUndefined();
+  });
+});
+
+describe('useSkillVocabularies', () => {
+  const competencyTree = {
+    framework: {
+      categories: [
+        { code: 'competency', index: 1, terms: [{ identifier: 'c1', code: 'comp', name: 'Comp', category: 'competency', associations: [{ identifier: 's1', category: 'skill' }] }] },
+        { code: 'skill', index: 2, terms: [{ identifier: 's1', code: 'hmis', name: 'HMIS Reporting', category: 'skill' }] },
+      ],
+    },
+  };
+
+  it('falls back to the competency framework read when the taxonomy read 404s', async () => {
+    vi.spyOn(FrameworkService.prototype, 'read').mockRejectedValue(httpError(404));
+    vi.spyOn(CompetencyFrameworkService.prototype, 'read').mockResolvedValue({ data: competencyTree, status: 200, headers: {} } as never);
+    const { result } = renderHook(() => useSkillVocabularies(['fw']), { wrapper });
+    await waitFor(() => expect(result.current.vocabularies.fw).toBeDefined());
+    expect(result.current.vocabularies.fw?.labels.hmis).toBe('HMIS Reporting');
+    expect(result.current.vocabularies.fw?.codeByName['hmis reporting']).toBe('hmis');
+  });
+
+  it('does not call the competency read for an older taxonomy framework', async () => {
+    const competencyRead = vi.spyOn(CompetencyFrameworkService.prototype, 'read');
+    const { result } = renderHook(() => useSkillVocabularies(['fw']), { wrapper });
+    await waitFor(() => expect(result.current.vocabularies.fw).toBeDefined());
+    expect(competencyRead).not.toHaveBeenCalled();
   });
 });

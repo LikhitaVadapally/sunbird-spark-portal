@@ -23,7 +23,6 @@ beforeEach(() => {
         roleCodes: ['staff-nurse-icu', 'nursing-officer'],
       },
     },
-    vocabularies: {},
     isLoading: false,
   });
   vi.mocked(useAssignRole).mockReturnValue({
