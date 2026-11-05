@@ -2,13 +2,17 @@ import { useMemo } from 'react';
 import { useQueries } from '@tanstack/react-query';
 import { useContentSearch } from './useContent';
 import { collectionHierarchyQueryOptions } from './useCollection';
+import { useSkillLabels } from './useSkillProfile';
 import { parseLearningPath } from '../services/learningPath/learningPathMapper';
+import { derivePathSkillCodes, splitPathSkills } from '../services/learningPath/skillAggregation';
+import { withSkillCodes } from '../services/skill/skillCodes';
 import type { PathSkillSummary } from '../services/learningPath/skillAggregation';
 import type { CollectionData } from '../types/collectionTypes';
 
 const DISCOVER_LIMIT = 10;
 const DISCOVER_CANDIDATE_CAP = 6;
 const SUGGESTION_LIMIT = 10;
+const NOTHING_FINISHED: ReadonlySet<string> = new Set();
 
 export type SkillSuggestionSource = 'enrolled' | 'discover';
 
@@ -20,19 +24,13 @@ export interface SkillSuggestion {
   contextId?: string;
   source: SkillSuggestionSource;
   progressPct: number;
-  /** Skills this path teaches that the learner hasn't gained yet. */
+  /** Skill CODES this path would add that the learner doesn't hold from any source. */
   newSkills: string[];
   totalSkills: number;
 }
 
-/** Every skill gained anywhere, across all enrolled paths — the baseline a suggestion is measured against. */
-function unionGainedSkills(summaries: PathSkillSummary[]): Set<string> {
-  const gained = new Set<string>();
-  summaries.forEach((summary) => summary.gainedSkills.forEach((skill) => gained.add(skill)));
-  return gained;
-}
-
-function fromEnrolled(summaries: PathSkillSummary[], gainedSkills: Set<string>): SkillSuggestion[] {
+/** An enrolled path adds exactly its pending skills - the same set My Skills lists as pending. */
+function fromEnrolled(summaries: PathSkillSummary[], heldCodes: ReadonlySet<string>): SkillSuggestion[] {
   return summaries
     .filter((summary) => summary.status !== 'completed')
     .map((summary) => ({
@@ -41,8 +39,8 @@ function fromEnrolled(summaries: PathSkillSummary[], gainedSkills: Set<string>):
       contextId: summary.contextId,
       source: 'enrolled' as const,
       progressPct: summary.progressPct,
-      newSkills: summary.allSkills.filter((skill) => !gainedSkills.has(skill)),
-      totalSkills: summary.allSkills.length,
+      newSkills: splitPathSkills(summary, heldCodes).pending,
+      totalSkills: summary.taughtCodes.length,
     }))
     .filter((suggestion) => suggestion.newSkills.length > 0);
 }
@@ -56,13 +54,16 @@ function fromEnrolled(summaries: PathSkillSummary[], gainedSkills: Set<string>):
  * no skill tags, so search alone can't answer "what would this teach me?".
  * That fan-out shares cache keys with `useCollection`/`useMySkills`, so a path
  * already opened elsewhere costs nothing.
+ *
+ * "Already gained" is `heldCodes` - the skill profile, so a skill earned from a standalone
+ * course, an assessment or an external certificate is never suggested again.
  */
 export function useSkillSuggestions(
   summaries: PathSkillSummary[],
-  enrolledPathIds: string[]
+  enrolledPathIds: string[],
+  heldCodes: ReadonlySet<string>
 ): { suggestions: SkillSuggestion[]; isLoading: boolean } {
-  const gainedSkills = useMemo(() => unionGainedSkills(summaries), [summaries]);
-  const enrolledSuggestions = useMemo(() => fromEnrolled(summaries, gainedSkills), [summaries, gainedSkills]);
+  const enrolledSuggestions = useMemo(() => fromEnrolled(summaries, heldCodes), [summaries, heldCodes]);
 
   const { data: searchData, isLoading: isSearchLoading } = useContentSearch({
     request: {
@@ -85,15 +86,31 @@ export function useSkillSuggestions(
     queries: candidates.map((item) => collectionHierarchyQueryOptions(item.identifier)),
   });
 
+  const candidateModels = useMemo(
+    () =>
+      hierarchyQueries.map((query) => {
+        const root = (query?.data as CollectionData | null | undefined)?.hierarchyRoot;
+        return root ? parseLearningPath(root) : null;
+      }),
+    [hierarchyQueries]
+  );
+  const candidateFrameworkIds = useMemo(
+    () => candidateModels.map((m) => m?.competencyFramework).filter((id): id is string => Boolean(id)),
+    [candidateModels]
+  );
+  const { codeOf } = useSkillLabels(candidateFrameworkIds);
+
   const discoverSuggestions = useMemo(() => {
     return candidates
       .map((item, i): SkillSuggestion | null => {
-        const data = hierarchyQueries[i]?.data as CollectionData | null | undefined;
-        const hierarchyRoot = data?.hierarchyRoot;
-        if (!hierarchyRoot) return null;
+        const parsed = candidateModels[i];
+        if (!parsed) return null;
 
-        const model = parseLearningPath(hierarchyRoot);
-        const newSkills = model.allSkills.filter((skill) => !gainedSkills.has(skill));
+        // USF paths are tagged by skill NAME; `heldCodes` are codes.
+        const model = withSkillCodes(parsed, codeOf);
+        // Nothing is finished in a path the learner has not joined, so all of it is still to do.
+        const { taughtCodes } = derivePathSkillCodes(model, NOTHING_FINISHED);
+        const newSkills = taughtCodes.filter((code) => !heldCodes.has(code));
         if (newSkills.length === 0) return null;
 
         return {
@@ -102,11 +119,11 @@ export function useSkillSuggestions(
           source: 'discover',
           progressPct: 0,
           newSkills,
-          totalSkills: model.allSkills.length,
+          totalSkills: taughtCodes.length,
         };
       })
       .filter((suggestion): suggestion is SkillSuggestion => suggestion !== null);
-  }, [candidates, hierarchyQueries, gainedSkills]);
+  }, [candidates, candidateModels, codeOf, heldCodes]);
 
   const suggestions = useMemo(() => {
     const combined = [...enrolledSuggestions, ...discoverSuggestions];

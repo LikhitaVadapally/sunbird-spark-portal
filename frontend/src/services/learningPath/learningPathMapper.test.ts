@@ -199,4 +199,41 @@ describe('parseLearningPath', () => {
     } as never);
     expect(model.levels[0]!.skills).toEqual(['Data literacy']);
   });
+
+  // My Skills keys pending skills by CODE, so the codes need the same skill -> se_skills fallback.
+  it('takes codes from se_skills too when a course has no skill field', () => {
+    const model = parseLearningPath({
+      ...LP_HIERARCHY_WITH_ASSESSMENTS,
+      children: [{ identifier: 'lvl_g', name: 'L', primaryCategory: 'Level', index: 1, children: [
+        { identifier: 'c_g', name: 'C', mimeType: 'application/vnd.ekstep.content-collection',
+          se_skills: ['hand-hygiene'], children: [{ identifier: 'r_g', mimeType: 'video/mp4' }] },
+      ] }],
+    } as never);
+    expect(model.levels[0]!.courses[0]!.skillCodes).toEqual(['hand-hygiene']);
+  });
+
+  // An untagged course falls back to its Level's OWN codes, not the union of its siblings'.
+  it("keeps a Level's own codes apart from the union of its courses' codes", () => {
+    const course = (id: string, skill?: string[]) => ({ identifier: id, name: id,
+      mimeType: 'application/vnd.ekstep.content-collection', ...(skill ? { skill } : {}),
+      children: [{ identifier: `${id}_r`, mimeType: 'video/mp4' }] });
+    const model = parseLearningPath({
+      ...LP_HIERARCHY_WITH_ASSESSMENTS,
+      children: [
+        { identifier: 'tagged', name: 'T', primaryCategory: 'Level', index: 1, skill: ['wound-care'],
+          children: [course('c1', ['sterile-field']), course('c2')] },
+        { identifier: 'untagged', name: 'U', primaryCategory: 'Level', index: 2,
+          children: [course('c3', ['ppe-use']), course('c4')] },
+      ],
+    } as never);
+    expect(model.levels[0]!.ownSkillCodes).toEqual(['wound-care']);
+    expect(model.levels[1]!.ownSkillCodes).toEqual([]);
+    expect(model.levels[1]!.skillCodes).toEqual(['ppe-use']);
+  });
+
+  it('falls back to the taxonomy framework when the path names no competency framework', () => {
+    const model = parseLearningPath({ ...LP_HIERARCHY_WITH_ASSESSMENTS, framework: 'nursing_fw' } as never);
+    expect(model.competencyFramework).toBe('nursing_fw');
+  });
 });
+

@@ -3,11 +3,18 @@ import { useQueries } from '@tanstack/react-query';
 import { collectionHierarchyQueryOptions } from './useCollection';
 import { useUserEnrolledCollections } from './useUserEnrolledCollections';
 import { useViewerSummary } from './useViewerSummary';
+import { useSkillLabels, useSkillProfile } from './useSkillProfile';
 import { getPathSummary, indexSummaryByCollectionId, parseCourseContextId } from '../services/viewer/summaryMapper';
 import { parseLearningPath } from '../services/learningPath/learningPathMapper';
-import { aggregateSkills, buildPathSkillSummary } from '../services/learningPath/skillAggregation';
+import { buildPathSkillSummary } from '../services/learningPath/skillAggregation';
+import { aggregateMySkills, buildMySkills, heldCodeSet } from '../services/skill/mySkills';
+import { indexPathNodes, withEvidenceSources } from '../services/skill/evidenceSources';
+import type { EvidenceSource } from '../services/skill/evidenceSources';
+import { withSkillCodes } from '../services/skill/skillCodes';
 import { isLearningPathCategory } from '../utils/isLearningPath';
 import type { PathSkillSummary, SkillAggregate } from '../services/learningPath/skillAggregation';
+import type { MySkillEntry } from '../services/skill/mySkills';
+import type { SkillLabel } from '../services/skill';
 import type { CollectionData } from '../types/collectionTypes';
 import type { TrackableCollection } from '../types/TrackableCollections';
 
@@ -37,27 +44,37 @@ export interface MySkillsEntry {
 export interface UseMySkillsResult {
   entries: MySkillsEntry[];
   summaries: PathSkillSummary[];
+  /** Every gained and pending skill, by the rule in `services/skill/mySkills.ts`. */
+  skills: MySkillEntry[];
+  /** Codes held from any source - the "already gained" baseline for suggestions and paths. */
+  heldCodes: ReadonlySet<string>;
   aggregate: SkillAggregate;
+  /** Display name + group for a code. */
+  labelOf: (code: string, frameworkId?: string) => SkillLabel;
+  /** True while framework names load - render skeletons rather than de-slugged codes. */
+  labelsLoading: boolean;
   /** Paths whose hierarchy has resolved — drives the "Analyzed X of Y" indicator. */
   analyzedCount: number;
   totalCount: number;
   isLoading: boolean;
   isError: boolean;
+  /** The skill profile failed: gained skills are unknown, so pending may be overstated. */
+  profileError: boolean;
   refetch: () => void;
 }
 
 /**
- * Every skill the learner has gained or has still to unlock, across all enrolled
- * Learning Paths.
+ * Every skill the learner has gained (from the skill profile, any source) or still has pending
+ * (on unfinished courses in enrolled Learning Paths).
  *
- * Skills live only in each path's hierarchy, so this fans out one hierarchy
- * query per enrolled path. They share `useCollection`'s cache keys, so a path
- * already opened elsewhere costs nothing, and results stream in individually —
- * the page renders each card as its query lands rather than blocking on all N.
+ * Pending skills live only in each path's hierarchy, so this fans out one hierarchy query per
+ * enrolled path. They share `useCollection`'s cache keys, so a path already opened elsewhere costs
+ * nothing, and results stream in individually.
  */
 export function useMySkills(): UseMySkillsResult {
   const enrolments = useUserEnrolledCollections();
   const { data: summaryRecords = [], isLoading: summaryLoading } = useViewerSummary();
+  const profile = useSkillProfile();
 
   const paths = useMemo<EnrolledPath[]>(() => {
     const courses = enrolments.data?.data?.courses ?? [];
@@ -77,39 +94,100 @@ export function useMySkills(): UseMySkillsResult {
 
   const summaryByCollectionId = useMemo(() => indexSummaryByCollectionId(summaryRecords), [summaryRecords]);
 
+  const models = useMemo(
+    () =>
+      hierarchyQueries.map((query) => {
+        const root = (query?.data as CollectionData | null | undefined)?.hierarchyRoot;
+        return root ? parseLearningPath(root) : null;
+      }),
+    [hierarchyQueries]
+  );
+
+  // Every framework in play: the profile's for gained names, each path's for its tags.
+  const frameworkIds = useMemo(
+    () => [
+      ...profile.frameworkIds,
+      ...models.map((m) => m?.competencyFramework).filter((id): id is string => Boolean(id)),
+    ],
+    [profile.frameworkIds, models]
+  );
+  const { labelOf, codeOf, isLoading: labelsLoading } = useSkillLabels(frameworkIds);
+
   const entries = useMemo<MySkillsEntry[]>(
     () =>
       paths.map((path, i) => {
         const query = hierarchyQueries[i];
-        const data = query?.data as CollectionData | null | undefined;
-        const hierarchyRoot = data?.hierarchyRoot ?? null;
+        const model = models[i];
 
-        if (!hierarchyRoot) {
+        if (!model) {
           return { path, isLoading: !!query?.isLoading || summaryLoading, isError: !!query?.isError };
         }
 
-        const model = parseLearningPath(hierarchyRoot);
+        // USF paths are tagged by skill NAME; the profile holds codes. Match on codes.
         const pathSummary = getPathSummary(summaryRecords, path.pathId, path.contextId);
-        const summary = buildPathSkillSummary(model, pathSummary, summaryByCollectionId, path.contextId);
+        const summary = buildPathSkillSummary(
+          withSkillCodes(model, codeOf),
+          pathSummary,
+          summaryByCollectionId,
+          path.contextId
+        );
         return { path, summary, isLoading: false, isError: false };
       }),
-    [paths, hierarchyQueries, summaryRecords, summaryByCollectionId, summaryLoading]
+    [paths, hierarchyQueries, models, codeOf, summaryRecords, summaryByCollectionId, summaryLoading]
   );
 
   const summaries = useMemo(
     () => entries.map((e) => e.summary).filter((s): s is PathSkillSummary => !!s),
     [entries]
   );
-  const aggregate = useMemo(() => aggregateSkills(summaries), [summaries]);
+  // Evidence names its source by id. Directly enrolled courses are named by the enrolment list;
+  // anything inside an enrolled path (an assessment, say) by that path's hierarchy, with the path.
+  const evidenceSources = useMemo(() => {
+    const sources = new Map<string, EvidenceSource>();
+    (enrolments.data?.data?.courses ?? []).forEach((c) => {
+      if (c.content?.name) sources.set(c.courseId, { name: c.content.name });
+    });
+    paths.forEach((path, i) => {
+      const root = (hierarchyQueries[i]?.data as CollectionData | null | undefined)?.hierarchyRoot;
+      if (!root) return;
+      const ref = {
+        pathId: path.pathId,
+        ...(path.contextId ? { contextId: path.contextId } : {}),
+        pathName: path.name || root.name || '',
+      };
+      indexPathNodes(root, ref).forEach((source, id) => {
+        const known = sources.get(id);
+        if (!known?.path) sources.set(id, { ...known, ...source });
+      });
+    });
+    return sources;
+  }, [enrolments.data, paths, hierarchyQueries]);
+  const skills = useMemo(
+    () => withEvidenceSources(buildMySkills(profile.skills, summaries), evidenceSources),
+    [profile.skills, summaries, evidenceSources]
+  );
+  const heldCodes = useMemo(() => heldCodeSet(profile.skills), [profile.skills]);
+  const aggregate = useMemo(() => aggregateMySkills(skills, summaries), [skills, summaries]);
+
 
   return {
     entries,
     summaries,
+    skills,
+    heldCodes,
     aggregate,
+    labelOf,
+    labelsLoading,
     analyzedCount: summaries.length,
     totalCount: paths.length,
-    isLoading: enrolments.isLoading || summaryLoading,
+    // Pending is "tagged minus held", so it cannot be shown before the profile lands without
+    // flashing skills the learner already holds as pending.
+    isLoading: enrolments.isLoading || summaryLoading || profile.isLoading,
     isError: enrolments.isError,
-    refetch: () => void enrolments.refetch(),
+    profileError: profile.isError,
+    refetch: () => {
+      void enrolments.refetch();
+      void profile.refetch();
+    },
   };
 }

@@ -87,6 +87,8 @@ export interface HierarchyContentNode {
   /** The Learning Path root only: the role the programme is built for. */
   targetRole?: string;
   competencyFramework?: string;
+  /** Taxonomy framework the content was authored against (the source of its `skill` terms). */
+  framework?: string;
 }
 
 export interface CourseHierarchyResponse {

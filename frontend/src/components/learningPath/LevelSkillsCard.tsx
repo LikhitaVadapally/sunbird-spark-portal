@@ -4,15 +4,14 @@ import type { PathSkill } from '@/services/learningPath/pathSkillStatus';
 interface LevelSkillsCardProps {
   /** Competency leaf codes for this level. */
   codes: string[];
-  /** Per-skill state, when the learner is enrolled and the path declares a framework. */
+  /** Per-skill state, when the learner is enrolled. Same gained/pending rule as My Skills. */
   stateOf?: (code: string) => PathSkill | undefined;
   name: (code: string) => string;
 }
 
 const DOT: Record<PathSkill['state'], string> = {
   held: 'bg-sunbird-green',
-  inProgress: 'bg-sunbird-brick',
-  notStarted: 'bg-sunbird-gray-e5',
+  pending: 'bg-sunbird-gray-e5',
 };
 
 /**
@@ -20,17 +19,16 @@ const DOT: Record<PathSkill['state'], string> = {
  *
  * The right-hand label used to read "In scope" for every skill, which is true from the day the
  * path is published and tells a learner nothing: mastered and never-opened looked identical. It
- * now reports the skill's actual state, falling back to "In scope" only when there is no state to
- * show - an unenrolled visitor, or a path with no competency framework.
+ * now reports gained/pending by the My Skills rule, falling back to "In scope" only when there is
+ * no state to show - an unenrolled visitor, or a finished course's skill the profile has not
+ * recorded (neither gained nor pending).
  */
 export function LevelSkillsCard({ codes, stateOf, name }: LevelSkillsCardProps) {
   const { t } = useAppI18n();
 
   const label = (s: PathSkill | undefined) => {
     if (!s) return t('learningPath.inScope');
-    if (s.state === 'held') return t('learningPath.skillHeld');
-    if (s.state === 'inProgress') return `${s.percent}%`;
-    return t('learningPath.skillNotStarted');
+    return s.state === 'held' ? t('learningPath.skillHeld') : t('learningPath.skillPending');
   };
 
   return (

@@ -55,7 +55,10 @@ export interface GapRowWire {
 
 export interface RoleGapWire {
   role?: string;
-  readiness?: number;
+  /** False when the role cannot be measured: it does not exist, or requires no skills. */
+  resolved?: boolean;
+  /** Null when `resolved` is false - never a 0 or a 100 the client would show. */
+  readiness?: number | null;
   required?: number;
   met?: number;
   gap?: GapRowWire[];
@@ -179,6 +182,10 @@ export interface SkillEvidence {
   evidenceId: string;
   sourceType: string;
   sourceId: string;
+  /** Display name of the source (a course's name), when the client knows it. */
+  sourceName?: string;
+  /** The enrolled Learning Path the source sits in, when it does. */
+  sourcePath?: { pathId: string; contextId?: string; pathName: string };
   score?: number;
   maxScore?: number;
   issuerId?: string;
@@ -197,11 +204,18 @@ export interface HeldSkill {
 
 export interface RoleGap {
   role: string;
+  /**
+   * False when the service could not measure the role (unknown, or requires nothing). Such a role
+   * has no readiness to show, which is not the same as 0%.
+   */
+  measurable: boolean;
   readiness: number;
   required: number;
   met: number;
   /** Skill codes still to earn. */
   outstanding: string[];
+  /** Skill codes of the role the learner already holds, so the score can be explained. */
+  held: string[];
 }
 
 export interface SkillGap {

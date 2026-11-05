@@ -25,8 +25,13 @@ export {
   groupSkillsByTier,
   frameworkCategories,
   skillName,
+  skillGroupName,
+  resolveSkillLabel,
   isGrouped,
   type SkillVocabulary,
+  type SkillLabel,
   type TierGroup,
   type TaxonomyFrameworkResponse,
 } from './skillTree';
+
+export { toSkillCode, withSkillCodes, type CodeOf } from './skillCodes';

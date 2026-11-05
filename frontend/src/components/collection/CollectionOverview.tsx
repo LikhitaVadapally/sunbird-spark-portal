@@ -5,6 +5,8 @@ import type { CollectionData } from "@/types/collectionTypes";
 import { ContentPlayer } from "@/components/players";
 import PageLoader from "@/components/common/PageLoader";
 import { Toaster } from "@/components/common/Toaster";
+import { CourseSkillsSection } from "./CourseSkillsSection";
+import { skillSource } from "@/services/learningPath/learningPathMapper";
 
 interface CollectionOverviewProps {
   collectionData: CollectionData;
@@ -46,6 +48,8 @@ const CollectionOverview = ({
   objectRollup,
 }: CollectionOverviewProps) => {
   const { t } = useAppI18n();
+  const root = collectionData.hierarchyRoot;
+  const skillCodes = root ? skillSource(root) : [];
 
   return (
     <div className="collection-overview-container">
@@ -144,6 +148,13 @@ const CollectionOverview = ({
           <p className="collection-description">
             {collectionData.description}
           </p>
+
+          {skillCodes.length > 0 && (
+            <CourseSkillsSection
+              codes={skillCodes}
+              frameworkId={root?.competencyFramework ?? root?.framework}
+            />
+          )}
 
           {/* Best Suited For */}
           <div>

@@ -1,12 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import { buildSkillGrowthSeries } from './skillGrowth';
-import type { SkillIndexEntry } from './skillIndex';
+import type { DatedSkill } from './skillGrowth';
 
-function entry(overrides: Partial<SkillIndexEntry> & { skill: string }): SkillIndexEntry {
+function entry(overrides: Partial<DatedSkill> & { skill: string }): DatedSkill & { skill: string } {
   return {
     gained: true,
-    pathCount: 1,
-    origins: [],
     ...overrides,
   };
 }

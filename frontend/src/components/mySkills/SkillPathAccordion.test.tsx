@@ -18,17 +18,14 @@ function summary(overrides: Partial<PathSkillSummary> = {}): PathSkillSummary {
     pathName: 'Data Foundations',
     progressPct: 50,
     status: 'ongoing',
-    allSkills: ['SQL', 'Python'],
-    gainedSkills: new Set(['SQL']),
-    gainedCount: 1,
-    pendingCount: 1,
-    skillSources: [
-      { skill: 'SQL', levelId: 'l1', levelName: 'Foundations', levelIndex: 1, gained: true },
-      { skill: 'Python', levelId: 'l2', levelName: 'Advanced', levelIndex: 2, gained: false },
-    ],
+    taughtCodes: ['sql', 'python'],
+    unfinishedCodes: ['python'],
     ...overrides,
   };
 }
+
+const HELD: ReadonlySet<string> = new Set(['sql']);
+const nameOf = (code: string) => code.toUpperCase();
 
 function renderAccordion(props: Partial<ComponentProps<typeof SkillPathAccordion>> = {}) {
   return render(
@@ -36,6 +33,8 @@ function renderAccordion(props: Partial<ComponentProps<typeof SkillPathAccordion
       <SkillPathAccordion
         pathName="Data Foundations"
         summary={summary()}
+        heldCodes={HELD}
+        nameOf={nameOf}
         isLoading={false}
         isExpanded={false}
         onToggle={vi.fn()}
@@ -64,9 +63,18 @@ describe('SkillPathAccordion', () => {
     const pending = screen.getAllByTestId('skill-chip-pending');
     expect(gained).toHaveLength(1);
     expect(pending).toHaveLength(1);
+    // Names, not codes.
+    expect(gained[0]).toHaveTextContent('SQL');
 
     const link = screen.getByText('mySkills.viewPathStatus').closest('a');
     expect(link).toHaveAttribute('href', '/learning-path/path-1/batch/ctx-1/status');
+  });
+
+  // Held from any source counts: a skill gained outside this path is gained here too.
+  it('counts a skill held from elsewhere as gained, never pending', () => {
+    renderAccordion({ isExpanded: true, heldCodes: new Set(['sql', 'python']) });
+    expect(screen.getAllByTestId('skill-chip-gained')).toHaveLength(2);
+    expect(screen.queryByTestId('skill-chip-pending')).not.toBeInTheDocument();
   });
 
   it('toggles expansion on click', () => {
@@ -92,7 +100,15 @@ describe('SkillPathAccordion', () => {
           <Route
             path="/my-skills"
             element={
-              <SkillPathAccordion pathName="Data Foundations" summary={summary()} isLoading={false} isExpanded onToggle={vi.fn()} />
+              <SkillPathAccordion
+                pathName="Data Foundations"
+                summary={summary()}
+                heldCodes={HELD}
+                nameOf={nameOf}
+                isLoading={false}
+                isExpanded
+                onToggle={vi.fn()}
+              />
             }
           />
           <Route path="/learning-path/:pathId/batch/:contextId/status" element={<LocationState />} />

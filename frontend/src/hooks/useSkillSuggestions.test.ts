@@ -52,20 +52,19 @@ function pathHierarchyRoot(id: string, name: string, skills: string[]): Hierarch
   } as unknown as HierarchyContentNode;
 }
 
-function summary(overrides: Partial<PathSkillSummary> & { allSkills: string[] }): PathSkillSummary {
+function summary(overrides: Partial<PathSkillSummary> & { taughtCodes: string[] }): PathSkillSummary {
   return {
     pathId: 'p1',
     contextId: 'ctx1',
     pathName: 'Path One',
     progressPct: 40,
     status: 'ongoing',
-    gainedSkills: new Set(),
-    gainedCount: 0,
-    pendingCount: overrides.allSkills.length,
-    skillSources: [],
+    unfinishedCodes: overrides.taughtCodes,
     ...overrides,
   };
 }
+
+const NONE: ReadonlySet<string> = new Set();
 
 describe('useSkillSuggestions', () => {
   beforeEach(() => {
@@ -75,52 +74,61 @@ describe('useSkillSuggestions', () => {
 
   it('surfaces enrolled-incomplete paths with their not-yet-gained skills', () => {
     const summaries = [
-      summary({
-        pathId: 'p1',
-        pathName: 'Data Foundations',
-        status: 'ongoing',
-        allSkills: ['SQL', 'Python'],
-        gainedSkills: new Set(['SQL']),
-      }),
+      summary({ pathId: 'p1', pathName: 'Data Foundations', status: 'ongoing', taughtCodes: ['sql', 'python'] }),
     ];
 
-    const { result } = renderHook(() => useSkillSuggestions(summaries, ['p1']), { wrapper });
+    const { result } = renderHook(() => useSkillSuggestions(summaries, ['p1'], new Set(['sql'])), { wrapper });
 
     expect(result.current.suggestions).toEqual([
-      expect.objectContaining({ pathId: 'p1', source: 'enrolled', newSkills: ['Python'] }),
+      expect.objectContaining({ pathId: 'p1', source: 'enrolled', newSkills: ['python'] }),
     ]);
   });
 
   it('excludes completed enrolled paths', () => {
     const summaries = [
-      summary({ pathId: 'p1', status: 'completed', allSkills: ['SQL'], gainedSkills: new Set(['SQL']) }),
+      summary({ pathId: 'p1', status: 'completed', taughtCodes: ['sql'] }),
     ];
 
-    const { result } = renderHook(() => useSkillSuggestions(summaries, ['p1']), { wrapper });
+    const { result } = renderHook(() => useSkillSuggestions(summaries, ['p1'], NONE), { wrapper });
     expect(result.current.suggestions).toEqual([]);
   });
 
   it('excludes an enrolled path with no new skills left to gain', () => {
-    const summaries = [
-      summary({ pathId: 'p1', status: 'ongoing', allSkills: ['SQL'], gainedSkills: new Set(['SQL']) }),
-    ];
+    const summaries = [summary({ pathId: 'p1', status: 'ongoing', taughtCodes: ['sql'] })];
 
-    const { result } = renderHook(() => useSkillSuggestions(summaries, ['p1']), { wrapper });
+    const { result } = renderHook(() => useSkillSuggestions(summaries, ['p1'], new Set(['sql'])), { wrapper });
     expect(result.current.suggestions).toEqual([]);
   });
 
-  it('fetches hierarchies for discovered unenrolled paths and surfaces their new skills', async () => {
-    hierarchyByCollectionId.set('disc-1', pathHierarchyRoot('disc-1', 'Cloud Basics', ['Cloud', 'Networking']));
+  // A skill held from a standalone course or an external certificate is not "new" anywhere.
+  it('treats a skill held from any source as already gained for discovered paths', async () => {
+    hierarchyByCollectionId.set('disc-1', pathHierarchyRoot('disc-1', 'Cloud Basics', ['cloud', 'networking']));
     mockUseContentSearch.mockReturnValue({
       data: { data: { content: [{ identifier: 'disc-1', name: 'Cloud Basics' }] } },
       isLoading: false,
     });
 
-    const { result } = renderHook(() => useSkillSuggestions([], []), { wrapper });
+    const { result } = renderHook(() => useSkillSuggestions([], [], new Set(['cloud'])), { wrapper });
 
     await waitFor(() => {
       expect(result.current.suggestions).toEqual([
-        expect.objectContaining({ pathId: 'disc-1', source: 'discover', newSkills: ['Cloud', 'Networking'] }),
+        expect.objectContaining({ pathId: 'disc-1', newSkills: ['networking'], totalSkills: 2 }),
+      ]);
+    });
+  });
+
+  it('fetches hierarchies for discovered unenrolled paths and surfaces their new skills', async () => {
+    hierarchyByCollectionId.set('disc-1', pathHierarchyRoot('disc-1', 'Cloud Basics', ['cloud', 'networking']));
+    mockUseContentSearch.mockReturnValue({
+      data: { data: { content: [{ identifier: 'disc-1', name: 'Cloud Basics' }] } },
+      isLoading: false,
+    });
+
+    const { result } = renderHook(() => useSkillSuggestions([], [], NONE), { wrapper });
+
+    await waitFor(() => {
+      expect(result.current.suggestions).toEqual([
+        expect.objectContaining({ pathId: 'disc-1', source: 'discover', newSkills: ['cloud', 'networking'] }),
       ]);
     });
   });
@@ -131,23 +139,23 @@ describe('useSkillSuggestions', () => {
       isLoading: false,
     });
 
-    const { result } = renderHook(() => useSkillSuggestions([], ['enrolled-1']), { wrapper });
+    const { result } = renderHook(() => useSkillSuggestions([], ['enrolled-1'], NONE), { wrapper });
     expect(result.current.suggestions).toEqual([]);
   });
 
   it('ranks by number of new skills, with enrolled ahead of discover on ties', async () => {
-    hierarchyByCollectionId.set('disc-1', pathHierarchyRoot('disc-1', 'Cloud Basics', ['Cloud']));
+    hierarchyByCollectionId.set('disc-1', pathHierarchyRoot('disc-1', 'Cloud Basics', ['cloud']));
     mockUseContentSearch.mockReturnValue({
       data: { data: { content: [{ identifier: 'disc-1', name: 'Cloud Basics' }] } },
       isLoading: false,
     });
 
     const summaries = [
-      summary({ pathId: 'p1', pathName: 'Data Foundations', allSkills: ['SQL', 'Python'], gainedSkills: new Set() }),
-      summary({ pathId: 'p2', pathName: 'Web Basics', allSkills: ['HTML'], gainedSkills: new Set() }),
+      summary({ pathId: 'p1', pathName: 'Data Foundations', taughtCodes: ['sql', 'python'] }),
+      summary({ pathId: 'p2', pathName: 'Web Basics', taughtCodes: ['html'] }),
     ];
 
-    const { result } = renderHook(() => useSkillSuggestions(summaries, ['p1', 'p2']), { wrapper });
+    const { result } = renderHook(() => useSkillSuggestions(summaries, ['p1', 'p2'], NONE), { wrapper });
 
     await waitFor(() => {
       expect(result.current.suggestions.map((s) => s.pathId)).toEqual(['p1', 'p2', 'disc-1']);

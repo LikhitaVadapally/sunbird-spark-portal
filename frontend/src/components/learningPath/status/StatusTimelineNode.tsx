@@ -12,7 +12,9 @@ interface StatusTimelineNodeProps {
   /** Attainment only — this page never locks a level, so there is no `locked` state here. */
   attained: boolean;
   progress: LevelProgressInfo;
+  /** Codes held from any source (skill profile). */
   gainedSkills: ReadonlySet<string>;
+  nameOf: (code: string) => string;
   selectedSkill: string | null;
   expanded: boolean;
   summaryByCollectionId: Map<string, ViewerSummaryRecord>;
@@ -28,6 +30,7 @@ export function StatusTimelineNode({
   attained,
   progress,
   gainedSkills,
+  nameOf,
   selectedSkill,
   expanded,
   summaryByCollectionId,
@@ -36,7 +39,8 @@ export function StatusTimelineNode({
   onSelectSkill,
 }: StatusTimelineNodeProps) {
   const { t } = useAppI18n();
-  const teachesSelected = !!selectedSkill && level.skills.includes(selectedSkill);
+  const codes = level.skillCodes;
+  const teachesSelected = !!selectedSkill && codes.includes(selectedSkill);
   const isDimmed = !!selectedSkill && !teachesSelected;
 
   return (
@@ -80,8 +84,8 @@ export function StatusTimelineNode({
             <span className="text-xs text-sunbird-gray-75">
               {level.courses.length} {t('learningPath.courses')} ·{' '}
               {t('learningPath.skillsGainedCount', {
-                gained: level.skills.filter((s) => gainedSkills.has(s)).length,
-                total: level.skills.length,
+                gained: codes.filter((code) => gainedSkills.has(code)).length,
+                total: codes.length,
               })}
             </span>
           </div>
@@ -100,20 +104,21 @@ export function StatusTimelineNode({
 
         {expanded && (
           <div className="animate-fade-in border-t border-dashed border-sunbird-gray-e5 px-4 py-4">
-            {level.skills.length > 0 && (
+            {codes.length > 0 && (
               <div className="mb-3">
                 <span className="mb-2 block text-[0.6875rem] font-medium uppercase tracking-wider text-sunbird-gray-75">
                   {t('learningPath.skillsInThisLevel')}
                 </span>
                 <div className="flex flex-wrap gap-1.5">
-                  {level.skills.map((skill, i) => (
+                  {codes.map((code, i) => (
                     <SkillTag
-                      key={skill}
-                      skill={skill}
-                      gained={gainedSkills.has(skill)}
+                      key={code}
+                      skill={code}
+                      label={nameOf(code)}
+                      gained={gainedSkills.has(code)}
                       index={i}
                       size="sm"
-                      selected={selectedSkill === skill}
+                      selected={selectedSkill === code}
                       onSelect={onSelectSkill}
                     />
                   ))}

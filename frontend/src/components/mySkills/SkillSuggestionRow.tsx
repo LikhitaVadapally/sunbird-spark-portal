@@ -6,6 +6,8 @@ import type { SkillSuggestion } from '@/hooks/useSkillSuggestions';
 
 interface SkillSuggestionRowProps {
   suggestions: SkillSuggestion[];
+  /** Display name for a skill code. */
+  nameOf: (code: string) => string;
 }
 
 const CHIP_PREVIEW_COUNT = 3;
@@ -19,7 +21,7 @@ function SkillChip({ skill }: { skill: string }) {
   );
 }
 
-function SuggestionCard({ suggestion }: { suggestion: SkillSuggestion }) {
+function SuggestionCard({ suggestion, nameOf }: { suggestion: SkillSuggestion; nameOf: (code: string) => string }) {
   const { t } = useAppI18n();
   const { pathId, pathName, contextId, source, progressPct, newSkills } = suggestion;
   const previewSkills = newSkills.slice(0, CHIP_PREVIEW_COUNT);
@@ -39,7 +41,7 @@ function SuggestionCard({ suggestion }: { suggestion: SkillSuggestion }) {
 
       <div className="flex flex-wrap gap-1.5">
         {previewSkills.map((skill) => (
-          <SkillChip key={skill} skill={skill} />
+          <SkillChip key={skill} skill={nameOf(skill)} />
         ))}
         {extraCount > 0 && (
           <span className="whitespace-nowrap text-xs font-medium text-sunbird-gray-75">
@@ -65,7 +67,7 @@ function SuggestionCard({ suggestion }: { suggestion: SkillSuggestion }) {
  * by how many not-yet-gained skills each would add. Draws from both
  * enrolled-incomplete paths and unenrolled Live paths.
  */
-export function SkillSuggestionRow({ suggestions }: SkillSuggestionRowProps) {
+export function SkillSuggestionRow({ suggestions, nameOf }: SkillSuggestionRowProps) {
   const { t } = useAppI18n();
 
   if (suggestions.length === 0) return null;
@@ -86,7 +88,7 @@ export function SkillSuggestionRow({ suggestions }: SkillSuggestionRowProps) {
 
       <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-1">
         {suggestions.map((suggestion) => (
-          <SuggestionCard key={`${suggestion.source}-${suggestion.pathId}`} suggestion={suggestion} />
+          <SuggestionCard key={`${suggestion.source}-${suggestion.pathId}`} suggestion={suggestion} nameOf={nameOf} />
         ))}
       </div>
     </section>

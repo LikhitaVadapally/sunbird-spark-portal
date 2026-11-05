@@ -12,64 +12,60 @@ vi.mock('@/hooks/useAppI18n', () => ({
 
 const summary: PathSkillSummary = {
   skills: [
-    { code: 'ppe-use', state: 'notStarted', percent: 0, notTaught: false },
-    { code: 'dosage-calculation', state: 'held', percent: 0, notTaught: false },
-    { code: 'hand-hygiene', state: 'inProgress', percent: 60, notTaught: false },
-    { code: 'hmis-reporting', state: 'notStarted', percent: 0, notTaught: true },
+    { code: 'ppe-use', state: 'pending' },
+    { code: 'dosage-calculation', state: 'held' },
+    { code: 'hand-hygiene', state: 'pending' },
   ],
   held: 1,
-  required: 4,
-  readiness: 25,
+  total: 3,
 };
 
 const name = (c: string) => c.replace(/-/g, ' ');
-const renderCard = (over: Partial<PathSkillSummary> = {}, hasRole = true) =>
+const renderCard = () =>
   render(
     <MemoryRouter>
-      <PathSkillProgressCard summary={{ ...summary, ...over }} name={name} roleName="Staff Nurse (ICU)" hasRole={hasRole} />
+      <PathSkillProgressCard summary={summary} name={name} />
     </MemoryRouter>
   );
 
 describe('PathSkillProgressCard', () => {
-  it('shows readiness against the role', () => {
+  it('shows gained of total, the same numbers My Skills counts', () => {
     renderCard();
-    expect(screen.getByTestId('path-skill-readiness')).toHaveTextContent('25%');
     expect(screen.getByTestId('path-skill-count')).toHaveTextContent('"held":1');
+    expect(screen.getByTestId('path-skill-count')).toHaveTextContent('"total":3');
   });
 
-  it('renders every skill, whatever its state', () => {
+  // Roles are hidden from learners until they are mapped: no readiness percentage, no role name.
+  it('shows no role readiness when no role is given', () => {
     renderCard();
-    ['ppe-use', 'dosage-calculation', 'hand-hygiene', 'hmis-reporting'].forEach((c) =>
-      expect(screen.getByTestId(`path-skill-${c}`)).toBeInTheDocument()
+    expect(screen.queryByText(/progressTowardRole/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/%/)).not.toBeInTheDocument();
+    expect(screen.getByText('learningPath.skillsFromThisPath')).toBeInTheDocument();
+  });
+
+  it('orders held first, then pending alphabetically', () => {
+    renderCard();
+    const ids = screen.getAllByRole('listitem').map((e) => e.getAttribute('data-testid'));
+    expect(ids).toEqual(['path-skill-dosage-calculation', 'path-skill-hand-hygiene', 'path-skill-ppe-use']);
+  });
+
+  it('links to My Skills, not the removed Competency Profile', () => {
+    renderCard();
+    expect(screen.getByText('learningPath.viewMySkills').closest('a')).toHaveAttribute('href', '/profile/skills');
+  });
+
+  it('shows role readiness and untaught skills once a role is mapped', () => {
+    render(
+      <MemoryRouter>
+        <PathSkillProgressCard
+          summary={summary}
+          name={name}
+          role={{ name: 'ICU Nurse', held: 1, required: 4, readiness: 25, notTaught: ['ventilator-care'] }}
+        />
+      </MemoryRouter>
     );
-  });
-
-  // The whole point: a partly-done skill must not look identical to an untouched one.
-  it('shows the percentage on an in-progress skill only', () => {
-    renderCard();
-    expect(screen.getByTestId('path-skill-hand-hygiene')).toHaveTextContent('60%');
-    expect(screen.getByTestId('path-skill-ppe-use')).not.toHaveTextContent('%');
-  });
-
-  // Ordering is the progress story: what you have, then what is moving, then what is untouched.
-  it('orders held first and not-started last', () => {
-    renderCard();
-    const ids = screen
-      .getAllByRole('listitem')
-      .map((e) => e.getAttribute('data-testid'));
-    expect(ids[0]).toBe('path-skill-dosage-calculation');   // held
-    expect(ids[1]).toBe('path-skill-hand-hygiene');         // in progress
-    expect(ids[ids.length - 1]).toBe('path-skill-ppe-use'); // not started, alphabetically last
-  });
-
-  // Finishing the path is not enough when the role needs something it never teaches.
-  it('flags a required skill the path does not teach', () => {
-    renderCard();
-    expect(screen.getByTestId('path-skill-hmis-reporting')).toHaveTextContent('notOnThisPath');
-  });
-
-  it('falls back to a path-scoped heading when there is no target role', () => {
-    renderCard({}, false);
-    expect(screen.getByText(/skillsFromThisPath/)).toBeInTheDocument();
+    expect(screen.getByText(/learningPath.progressTowardRole/)).toHaveTextContent('ICU Nurse');
+    expect(screen.getByTestId('path-skill-readiness')).toHaveTextContent('25%');
+    expect(screen.getByTestId('path-skill-ventilator-care')).toHaveTextContent('learningPath.notOnThisPath');
   });
 });

@@ -41,7 +41,12 @@ export interface SkillVocabulary {
   labels: Record<string, string>;
   /** Leaf code -> its resolved position in the tree. */
   leaves: Record<string, LeafSkill>;
+  /** Lower-cased skill name -> code, for content tagged by NAME (USF). See `toSkillCode`. */
+  codeByName: Record<string, string>;
 }
+
+/** Categories whose terms are skills. USF's `industry`/`domain` terms must never match a tag. */
+const SKILL_CATEGORIES = new Set(['skill', 'competency']);
 
 /**
  * Categories out of a taxonomy framework read, whichever shape arrives.
@@ -78,17 +83,24 @@ export function buildSkillVocabulary(
 ): SkillVocabulary {
   const labels: Record<string, string> = {};
   const leaves: Record<string, LeafSkill> = {};
+  // null marks a name two codes share: ambiguous, so it resolves to neither.
+  const names: Record<string, string | null> = {};
   const categories = frameworkCategories(body);
 
   categories.forEach((category) => {
-    (category.terms ?? []).forEach((term) => collect(term, [], new Set<string>()));
+    const isSkill = SKILL_CATEGORIES.has((category.code ?? '').toLowerCase());
+    (category.terms ?? []).forEach((term) => collect(term, [], new Set<string>(), isSkill));
   });
 
-  function collect(term: TreeTermWire, ancestors: TierNode[], seen: Set<string>): void {
+  function collect(term: TreeTermWire, ancestors: TierNode[], seen: Set<string>, isSkill: boolean): void {
     const code = term.code;
     if (!code || seen.has(code)) return;
     const name = term.name ?? code;
     labels[code] = name;
+    if (isSkill && term.name) {
+      const key = term.name.trim().toLowerCase();
+      names[key] = names[key] === undefined || names[key] === code ? code : null;
+    }
 
     const children = term.children ?? [];
     if (children.length === 0) {
@@ -99,10 +111,14 @@ export function buildSkillVocabulary(
     const nextSeen = new Set(seen);
     nextSeen.add(code);
     const nextAncestors = [...ancestors, { code, name, depth: ancestors.length }];
-    children.forEach((child) => collect(child, nextAncestors, nextSeen));
+    children.forEach((child) => collect(child, nextAncestors, nextSeen, isSkill));
   }
 
-  return { frameworkId, labels, leaves };
+  const codeByName: Record<string, string> = {};
+  Object.entries(names).forEach(([key, code]) => {
+    if (code) codeByName[key] = code;
+  });
+  return { frameworkId, labels, leaves, codeByName };
 }
 
 export interface TierGroup {
@@ -161,6 +177,42 @@ export function skillName(vocabulary: SkillVocabulary | undefined, code: string)
   const words = code.replace(/[_-]+/g, ' ').trim();
   if (!words) return code;
   return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
+/** A skill as the learner sees it: its name and the term it sits under. */
+export interface SkillLabel {
+  name: string;
+  /** Name of the leaf's parent term ("Infection Prevention"); undefined when the tree does not place it. */
+  group?: string;
+  /** False when no framework knew the code and `name` is only a de-slugged guess. */
+  resolved: boolean;
+}
+
+/** The name of a leaf's immediate parent term - the small group label on a skill card. */
+export function skillGroupName(vocabulary: SkillVocabulary | undefined, code: string): string | undefined {
+  const path = vocabulary?.leaves[code]?.path;
+  return path && path.length > 0 ? path[path.length - 1]?.name : undefined;
+}
+
+/**
+ * Name and group for a code, looked up across every loaded framework.
+ *
+ * Skills are keyed by CODE everywhere, but a code reaches a page from several places - the
+ * profile (which names its framework), a path hierarchy (which may not), a course tag (which
+ * never does). So the preferred framework is tried first, then any framework whose tree holds
+ * the code as a leaf, then any that merely labels it. Only when none does is it de-slugged.
+ */
+export function resolveSkillLabel(
+  vocabularies: Array<SkillVocabulary | undefined>,
+  code: string,
+  preferredFrameworkId?: string
+): SkillLabel {
+  const loaded = vocabularies.filter((v): v is SkillVocabulary => Boolean(v));
+  const preferred = loaded.find((v) => v.frameworkId === preferredFrameworkId && v.labels[code]);
+  const vocab = preferred ?? loaded.find((v) => v.leaves[code]) ?? loaded.find((v) => v.labels[code]);
+  if (!vocab) return { name: skillName(undefined, code), resolved: false };
+  const group = skillGroupName(vocab, code);
+  return { name: skillName(vocab, code), ...(group ? { group } : {}), resolved: true };
 }
 
 /** True when at least one skill resolved to a tier, i.e. grouping is meaningful. */

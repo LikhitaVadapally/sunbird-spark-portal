@@ -80,17 +80,20 @@ export function normaliseProfile(response: SkillProfileResponse | undefined | nu
 function normaliseRoleGap(raw: RoleGapWire | null | undefined): RoleGap | undefined {
   if (!raw?.role) return undefined;
   const outstanding = (raw.outstanding ?? []).filter((s): s is string => Boolean(s));
-  const gapMissing = (raw.gap ?? [])
-    .filter((g) => g?.skillId && g.status === GAP_STATUS.missing)
-    .map((g) => g.skillId as string);
+  const rowsWith = (status: string) =>
+    (raw.gap ?? []).filter((g) => g?.skillId && g.status === status).map((g) => g.skillId as string);
+  const gapMissing = rowsWith(GAP_STATUS.missing);
   return {
     role: raw.role,
+    // Older builds omit `resolved`; a numeric readiness is then the only evidence it was measured.
+    measurable: raw.resolved ?? typeof raw.readiness === 'number',
     readiness: typeof raw.readiness === 'number' ? raw.readiness : 0,
     required: typeof raw.required === 'number' ? raw.required : 0,
     met: typeof raw.met === 'number' ? raw.met : 0,
     // `outstanding` is the service's own ordering; fall back to deriving it from the rows
     // so a build that omits the field still shows the learner what is missing.
     outstanding: outstanding.length > 0 ? outstanding : gapMissing,
+    held: rowsWith(GAP_STATUS.met),
   };
 }
 
