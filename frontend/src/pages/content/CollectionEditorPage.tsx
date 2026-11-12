@@ -68,7 +68,7 @@ const CollectionEditorPage = () => {
 
   const viewIntent = useEditorViewIntent();
 
-  const { editorMode, lockError, isLocking, retireLock } = useEditorLock({
+  const { editorMode, lockError, isLocking, isResolvingRole, retireLock } = useEditorLock({
     contentId,
     metadata,
     viewIntent,
@@ -97,7 +97,7 @@ const CollectionEditorPage = () => {
     }
   }, [navigate, retireLock, interact, contentId, backTo]);
 
-  if (loading || isLocking) {
+  if (loading || isLocking || isResolvingRole) {
     return <PageLoader message={isLocking ? t('content.acquiringLock') : t('content.loadingEditor')} />;
   }
 

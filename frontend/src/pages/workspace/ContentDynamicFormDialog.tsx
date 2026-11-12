@@ -60,7 +60,7 @@ const processFormSubmission = (formValues: Record<string, string | string[]>, fi
 
   return {
     name: nameValue,
-    description: ((formValues['description'] as string) || 'Enter description for Resource').trim(),
+    description: ((formValues['description'] as string) || '').trim(),
     dynamicFields,
   };
 };

@@ -397,7 +397,7 @@ describe('ContentDynamicFormDialog', () => {
     );
   });
 
-  it('should use default description when empty', async () => {
+  it('should leave the description empty when none is entered (no placeholder saved as text)', async () => {
     const onSubmit = vi.fn();
     renderWithQueryClient(<ContentDynamicFormDialog {...defaultProps} onSubmit={onSubmit} />);
 
@@ -421,7 +421,7 @@ describe('ContentDynamicFormDialog', () => {
     expect(onSubmit).toHaveBeenCalledWith(
       expect.objectContaining({
         name: 'Test Content',
-        description: 'Enter description for Resource',
+        description: '',
       })
     );
   });

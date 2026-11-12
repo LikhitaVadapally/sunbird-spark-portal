@@ -8,6 +8,11 @@ const mockGetUserRole = vi.fn();
 const mockGetEditorMode = vi.fn();
 const mockUseUserRead = vi.fn();
 const mockUseContentLock = vi.fn();
+const mockUseAuthInfo = vi.fn();
+
+vi.mock('@/hooks/useAuthInfo', () => ({
+  useAuthInfo: () => mockUseAuthInfo(),
+}));
 
 vi.mock('@/hooks/useUserRead', () => ({
   useUserRead: () => mockUseUserRead(),
@@ -33,6 +38,7 @@ describe('useEditorLock', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockUseAuthInfo.mockReturnValue({ isLoading: false });
     mockUseUserRead.mockReturnValue({
       data: {
         data: {
@@ -358,5 +364,31 @@ describe('useEditorLock', () => {
     rerender();
 
     expect(mockGetUserRole).toHaveBeenCalledTimes(2);
+  });
+  describe('isResolvingRole', () => {
+    const render = () => renderHook(
+      () => useEditorLock({ contentId: 'do_123', metadata: { status: 'Review', identifier: 'do_123' } }),
+      { wrapper: createWrapper() },
+    );
+
+    it('is true while the user read is loading, so the editor is not opened with an unknown role', () => {
+      mockUseUserRead.mockReturnValue({ data: undefined, isLoading: true });
+      expect(render().result.current.isResolvingRole).toBe(true);
+    });
+
+    it('is true while auth info is still loading (the user read cannot start yet)', () => {
+      mockUseAuthInfo.mockReturnValue({ isLoading: true });
+      mockUseUserRead.mockReturnValue({ data: undefined, isLoading: false });
+      expect(render().result.current.isResolvingRole).toBe(true);
+    });
+
+    it('is false once the roles have loaded', () => {
+      expect(render().result.current.isResolvingRole).toBe(false);
+    });
+
+    it('is false when the user read failed, so the page falls back instead of hanging', () => {
+      mockUseUserRead.mockReturnValue({ data: undefined, isLoading: false, isError: true });
+      expect(render().result.current.isResolvingRole).toBe(false);
+    });
   });
 });

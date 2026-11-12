@@ -45,7 +45,7 @@ const QumlEditorPage = () => {
 
   const viewIntent = useEditorViewIntent();
 
-  const { editorMode, lockError, isLocking, retireLock } = useEditorLock({
+  const { editorMode, lockError, isLocking, isResolvingRole, retireLock } = useEditorLock({
     contentId,
     metadata,
     viewIntent,
@@ -76,7 +76,7 @@ const QumlEditorPage = () => {
 
   const handleTelemetryEvent = useCallback((_event: any) => { }, []);
 
-  if (loading) {
+  if (loading || isResolvingRole) {
     return <PageLoader message={t('content.loadingEditor')} />;
   }
 

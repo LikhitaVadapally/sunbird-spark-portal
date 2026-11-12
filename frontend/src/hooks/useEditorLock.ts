@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { useUserRead } from '@/hooks/useUserRead';
+import { useAuthInfo } from '@/hooks/useAuthInfo';
 import { getUserRole, getEditorMode, type EditorMode } from '@/services/editors/editorModeService';
 import { useContentLock } from '@/hooks/useContentLock';
 
@@ -15,6 +16,12 @@ export interface UseEditorLockReturn {
   isEditMode: boolean;
   lockError: string | null;
   isLocking: boolean;
+  /**
+   * True while the user's roles are still loading. The editor reads its mode once when it opens,
+   * so callers must not render it until this is false: opened early, a reviewer's course in
+   * Review resolves to 'read' (role still unknown) and stays read-only with no Publish button.
+   */
+  isResolvingRole: boolean;
   retireLock: () => Promise<void>;
 }
 
@@ -27,7 +34,10 @@ export const useEditorLock = ({
   metadata,
   viewIntent = false,
 }: UseEditorLockOptions): UseEditorLockReturn => {
-  const { data: userData } = useUserRead();
+  const { isLoading: isAuthLoading } = useAuthInfo();
+  const { data: userData, isLoading: isUserLoading } = useUserRead();
+  // isLoading is false once a load fails, so an error falls back to the role-less mode, not a hang.
+  const isResolvingRole = Boolean(isAuthLoading || isUserLoading);
   const userRole = useMemo(() => getUserRole(userData), [userData]);
 
   const editorMode = useMemo(
@@ -45,5 +55,5 @@ export const useEditorLock = ({
     enabled: isEditMode && isDraft,
   });
 
-  return { editorMode, isEditMode, lockError, isLocking, retireLock };
+  return { editorMode, isEditMode, lockError, isLocking, isResolvingRole, retireLock };
 };

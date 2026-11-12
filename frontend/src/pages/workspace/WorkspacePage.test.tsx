@@ -775,6 +775,8 @@ describe('WorkspacePage', () => {
         })
       );
     });
+    // No description typed: nothing is sent, so no placeholder text is saved as the description.
+    expect(mockContentCreate.mock.calls[0]?.[1]?.description).toBeUndefined();
     await waitFor(() => {
       expect(mockNavigate).toHaveBeenCalledWith(
         '/edit/collection-editor/do_course_new_123',

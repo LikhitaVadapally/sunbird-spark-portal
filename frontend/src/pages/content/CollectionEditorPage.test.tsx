@@ -4,12 +4,13 @@ import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import CollectionEditorPage from './CollectionEditorPage';
 
-const { mockNavigate, mockParams, mockContentRead, mockToast, mockRetireLock } = vi.hoisted(() => ({
+const { mockNavigate, mockParams, mockContentRead, mockToast, mockRetireLock, mockRole } = vi.hoisted(() => ({
   mockNavigate: vi.fn(),
   mockParams: { contentId: 'do_123' as string | undefined },
   mockContentRead: vi.fn(),
   mockToast: vi.fn(),
   mockRetireLock: vi.fn().mockResolvedValue(undefined),
+  mockRole: { resolving: false },
 }));
 
 vi.mock('react-router-dom', async () => {
@@ -59,6 +60,7 @@ vi.mock('@/hooks/useEditorLock', () => ({
       isEditMode: editorMode === 'edit',
       lockError: null,
       isLocking: false,
+      isResolvingRole: mockRole.resolving,
       retireLock: mockRetireLock,
     };
   },
@@ -96,6 +98,7 @@ describe('CollectionEditorPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockParams.contentId = 'do_123';
+    mockRole.resolving = false;
     mockContentRead.mockResolvedValue({
       data: {
         content: {
@@ -154,6 +157,19 @@ describe('CollectionEditorPage', () => {
     await waitFor(() => {
       expect(screen.getByTestId('editor-mode')).toHaveTextContent('review');
     });
+  });
+
+  it('keeps the loader up while the user role is loading, so a reviewer never gets a read-only editor', async () => {
+    mockContentRead.mockResolvedValue({
+      data: { content: { identifier: 'do_123', status: 'Review', primaryCategory: 'Course' } },
+    });
+    mockRole.resolving = true;
+
+    renderWithRouter(<CollectionEditorPage />);
+    await waitFor(() => expect(mockContentRead).toHaveBeenCalled());
+
+    expect(screen.getByTestId('page-loader')).toBeInTheDocument();
+    expect(screen.queryByTestId('collection-editor')).not.toBeInTheDocument();
   });
 
   it('shows error toast and fallback when metadata fetch fails', async () => {

@@ -57,42 +57,36 @@ const COLLECTION_CONTENT_CONFIG: Record<string, {
   contentType: string;
   primaryCategory: string;
   resourceType: string;
-  descriptionKey: string;
 }> = {
   course: {
     mimeType: 'application/vnd.ekstep.content-collection',
     contentType: 'Course',
     primaryCategory: 'Course',
     resourceType: 'Course',
-    descriptionKey: 'workspace.collectionDescriptions.course',
   },
   'content-playlist': {
     mimeType: 'application/vnd.ekstep.content-collection',
     contentType: 'Collection',
     primaryCategory: 'Content Playlist',
     resourceType: 'Collection',
-    descriptionKey: 'workspace.collectionDescriptions.contentPlaylist'
   },
   'digital-textbook': {
     mimeType: 'application/vnd.ekstep.content-collection',
     contentType: 'TextBook',
     primaryCategory: 'Digital Textbook',
     resourceType: 'Collection',
-    descriptionKey: 'workspace.collectionDescriptions.digitalTextbook'
   },
   'question-paper': {
     mimeType: 'application/vnd.ekstep.content-collection',
     contentType: 'Collection',
     primaryCategory: 'Question paper',
     resourceType: 'Collection',
-    descriptionKey: 'workspace.collectionDescriptions.questionPaper'
   },
   'learning-path': {
     mimeType: 'application/vnd.ekstep.content-collection',
     contentType: 'LearningPath',
     primaryCategory: 'Learning Path',
     resourceType: 'Collection',
-    descriptionKey: 'workspace.collectionDescriptions.learningPath'
   },
 };
 
@@ -418,13 +412,11 @@ const WorkspacePage = () => {
         const config = COLLECTION_CONTENT_CONFIG[configKey];
         if (!config) throw new Error(t("workspace.errors.invalidContentType"));
 
-        const { descriptionKey, ...apiConfig } = config;
-
         const response = await contentService.contentCreate(formData.name, {
           createdBy,
           creator,
-          ...apiConfig,
-          description: formData.description || "Enter the description",
+          ...config,
+          description: formData.description,
           organisation,
           createdFor,
           framework: orgFramework,
@@ -450,7 +442,7 @@ const WorkspacePage = () => {
           mimeType: 'application/vnd.ekstep.ecml-archive',
           contentType: isQuiz ? 'SelfAssess' : 'Resource',
           ...(isQuiz ? { primaryCategory: 'Course Assessment' } : {}),
-          description: formData.description || 'Enter description for Resource',
+          description: formData.description,
           organisation,
           createdFor,
           framework: orgFramework,
@@ -501,17 +493,17 @@ const WorkspacePage = () => {
         // Course / Learning Path creation: inline collection creation logic
         const { creator, createdBy, organisation, createdFor } = getCreatorMeta();
         const config = COLLECTION_CONTENT_CONFIG[selectedOption]!;
-        const { descriptionKey, ...apiConfig } = config;
         const targetFWIds: string[] = orgFramework ? [orgFramework] : [];
 
         const response = await contentService.contentCreate(name, {
           createdBy,
           creator,
-          ...apiConfig,
+          ...config,
           ...(selectedOption === 'course' && extra?.isEvaluationCourse
             ? { primaryCategory: 'Evaluation Course' }
             : {}),
-          description: extra?.description || t(descriptionKey),
+          // Left out when empty: a placeholder saved here showed up as real text in the editor.
+          description: extra?.description,
           organisation,
           createdFor,
           targetFWIds,
