@@ -1343,7 +1343,7 @@
       "loading": "Opening…",
       "name": "Name",
       "code": "Code",
-      "codeHint": "Becomes the framework ID and cannot be changed later. Letters, numbers, - and _ only.",
+      "codeHint": "Filled in from the name. Becomes the framework ID and cannot be changed later. Letters, numbers, - and _ only.",
       "organisation": "Organisation",
       "noOrganisation": "No organisation found for your account",
       "description": "Description",
@@ -1409,6 +1409,23 @@
         "notFound": "Framework not found. Check the framework ID.",
         "withDetail": "Something went wrong: {{detail}}",
         "generic": "Something went wrong. Please try again."
+      },
+      "levels": {
+        "title": "Levels",
+        "hint": "Top to bottom. The last level holds the skills courses are tagged with. Keep the defaults unless your framework needs different levels.",
+        "level": "Level {{n}}",
+        "skillsLevel": "Skills level",
+        "name": "Level name",
+        "code": "Level code",
+        "add": "Add level",
+        "remove": "Remove level",
+        "errors": {
+          "empty": "Enter a name and a code.",
+          "invalid": "Code must start with a letter and use only letters and numbers.",
+          "reserved": "This code is already used by course details. Pick another.",
+          "duplicate": "Each level needs its own code."
+        },
+        "codeHeader": "Code (used in the CSV's Category column)"
       }
     }
   },

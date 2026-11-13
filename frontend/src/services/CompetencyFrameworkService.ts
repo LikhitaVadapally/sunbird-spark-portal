@@ -16,6 +16,7 @@ import { getClient, ApiResponse } from '../lib/http-client';
  *   GET   /competency-framework/v3/read/:id            -> result.framework
  *   POST  /competency-framework/v3/publish/:id         channel comes from X-Channel-Id
  *   POST  /framework/v1/category/create?framework=  attach a master category (knowledge-mw -> Knowlg)
+ *   POST  /framework/v3/category/master/create      create a master category (global, shared by all orgs)
  *   POST  /composite/v1/search                         objectType CompetencyFramework -> result.CompetencyFramework
  *   GET   /framework/v3/term/download/:framework       -> result.fileUrl (a cloud-storage CSV link)
  *   POST  /framework/v3/term/validate                  multipart: framework + file (dry run)
@@ -31,15 +32,23 @@ const FRAMEWORK = '/framework/v3';
 /** The exact columns TermSheetReader.REQUIRED_HEADERS expects, in download order. */
 export const TERM_SHEET_HEADERS = ['Category', 'Name', 'Code', 'Associated Terms', 'Description'] as const;
 
+/** One level (Knowlg category) of a skill framework. */
+export interface FrameworkLevel {
+  code: string;
+  name: string;
+}
+
 /**
- * Levels a new skill framework gets, top to bottom. Each must exist as a Knowlg master category;
- * a term sheet row is rejected ("Category ... is not attached") unless its category is attached.
+ * Default levels of a new skill framework, top to bottom; the admin may rename, add or remove
+ * them. Each must exist as a Knowlg master category, and a term sheet row is rejected ("Category
+ * ... is not attached") unless its category is attached. The LAST level holds the skills, and its
+ * code is the content field courses carry skill tags in (lern reads it that way).
  */
-export const SKILL_FRAMEWORK_CATEGORIES = [
+export const SKILL_FRAMEWORK_CATEGORIES: readonly FrameworkLevel[] = [
   { code: 'competencyarea', name: 'Competency Area' },
   { code: 'competency', name: 'Competency' },
   { code: 'skill', name: 'Skill' },
-] as const;
+];
 
 /** Statuses during which Knowlg rejects term validate/commit (FrameworkManager.assertFrameworkEditable). */
 export const FRAMEWORK_EDIT_BLOCKED_STATUSES = ['Review', 'Processing'];
@@ -129,6 +138,28 @@ export class CompetencyFrameworkService {
   public attachCategory(frameworkId: string, category: { code: string; name: string }): Promise<ApiResponse<{ identifier?: string }>> {
     return getClient().post(`/framework/v1/category/create?framework=${encodeURIComponent(frameworkId)}`, {
       request: { category },
+    });
+  }
+
+  /**
+   * Creates a master category, for a level no framework has used yet. Master categories are
+   * global in Knowlg; the field names follow the existing ones (`skill` -> targetSkillIds,
+   * se_skills, se_skillIds, skillIds).
+   */
+  public createMasterCategory(level: FrameworkLevel): Promise<ApiResponse<{ identifier?: string }>> {
+    const cap = level.code.charAt(0).toUpperCase() + level.code.slice(1);
+    return getClient().post(`${FRAMEWORK}/category/master/create`, {
+      request: {
+        category: {
+          name: level.name,
+          description: level.name,
+          code: level.code,
+          targetIdFieldName: `target${cap}Ids`,
+          searchLabelFieldName: `se_${level.code}s`,
+          searchIdFieldName: `se_${level.code}Ids`,
+          orgIdFieldName: `${level.code}Ids`,
+        },
+      },
     });
   }
 

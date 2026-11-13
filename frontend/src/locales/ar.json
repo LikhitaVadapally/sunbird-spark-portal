@@ -1327,7 +1327,7 @@
       "loading": "Opening…",
       "name": "Name",
       "code": "Code",
-      "codeHint": "Becomes the framework ID and cannot be changed later. Letters, numbers, - and _ only.",
+      "codeHint": "يُملأ تلقائيًا من الاسم. يصبح معرّف الإطار ولا يمكن تغييره لاحقًا. أحرف وأرقام و - و _ فقط.",
       "organisation": "Organisation",
       "noOrganisation": "No organisation found for your account",
       "description": "Description",
@@ -1393,6 +1393,23 @@
         "notFound": "Framework not found. Check the framework ID.",
         "withDetail": "Something went wrong: {{detail}}",
         "generic": "Something went wrong. Please try again."
+      },
+      "levels": {
+        "title": "المستويات",
+        "hint": "من الأعلى إلى الأسفل. يحتوي المستوى الأخير على المهارات التي توسم بها الدورات. احتفظ بالقيم الافتراضية ما لم يحتج إطارك إلى مستويات مختلفة.",
+        "level": "المستوى {{n}}",
+        "skillsLevel": "مستوى المهارات",
+        "name": "اسم المستوى",
+        "code": "رمز المستوى",
+        "add": "إضافة مستوى",
+        "remove": "إزالة المستوى",
+        "errors": {
+          "empty": "أدخل اسمًا ورمزًا.",
+          "invalid": "يجب أن يبدأ الرمز بحرف وأن يحتوي على أحرف وأرقام فقط.",
+          "reserved": "هذا الرمز مستخدم بالفعل في تفاصيل الدورة. اختر رمزًا آخر.",
+          "duplicate": "يحتاج كل مستوى إلى رمز خاص به."
+        },
+        "codeHeader": "الرمز (يُستخدم في عمود Category في ملف CSV)"
       }
     }
   },

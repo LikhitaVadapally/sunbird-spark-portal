@@ -13,6 +13,7 @@ vi.mock('@/services/CompetencyFrameworkService', async (orig) => {
       list: vi.fn(),
       create: vi.fn(),
       attachCategory: vi.fn(),
+      createMasterCategory: vi.fn(),
       validateTerms: vi.fn(),
       commitTerms: vi.fn(),
     },
@@ -107,10 +108,46 @@ describe('useCreateCompetencyFramework', () => {
 
   it('fails when a level cannot be attached', async () => {
     vi.mocked(competencyFrameworkService.create).mockResolvedValue({ data: { node_id: 'fw_agri' }, status: 200, headers: {} });
-    vi.mocked(competencyFrameworkService.attachCategory).mockRejectedValue(apiError({ status: 400, errCode: 'ERR_CATEGORY_NOT_FOUND' }));
+    vi.mocked(competencyFrameworkService.attachCategory).mockRejectedValue(apiError({ status: 400, errCode: 'ERR_FRAMEWORK_NOT_FOUND' }));
     const { result } = renderHook(() => useCreateCompetencyFramework(), { wrapper });
     act(() => result.current.mutate(input));
     await waitFor(() => expect(result.current.isError).toBe(true));
-    expect(result.current.error?.errCode).toBe('ERR_CATEGORY_NOT_FOUND');
+    expect(result.current.error?.errCode).toBe('ERR_FRAMEWORK_NOT_FOUND');
+  });
+
+  it('attaches the admin\'s own levels in order and never sends them to the create call', async () => {
+    vi.mocked(competencyFrameworkService.create).mockResolvedValue({ data: { node_id: 'fw_cook' }, status: 200, headers: {} });
+    vi.mocked(competencyFrameworkService.attachCategory).mockResolvedValue(ok);
+    const levels = [{ code: 'technique', name: 'Technique' }, { code: 'cuisine', name: 'Cuisine' }];
+    const { result } = renderHook(() => useCreateCompetencyFramework(), { wrapper });
+    act(() => result.current.mutate({ ...input, levels }));
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(competencyFrameworkService.create).toHaveBeenCalledWith(input);
+    expect(vi.mocked(competencyFrameworkService.attachCategory).mock.calls.map(([, c]) => c.code)).toEqual(['technique', 'cuisine']);
+    expect(competencyFrameworkService.createMasterCategory).not.toHaveBeenCalled();
+  });
+
+  // A level no framework has used yet is not a master category until it is created.
+  it('creates a missing master category, then attaches it', async () => {
+    vi.mocked(competencyFrameworkService.create).mockResolvedValue({ data: { node_id: 'fw_cook' }, status: 200, headers: {} });
+    vi.mocked(competencyFrameworkService.attachCategory)
+      .mockRejectedValueOnce(apiError({ status: 400, errCode: 'ERR_CATEGORY_NOT_FOUND' }))
+      .mockResolvedValue(ok);
+    vi.mocked(competencyFrameworkService.createMasterCategory).mockResolvedValue(ok);
+    const { result } = renderHook(() => useCreateCompetencyFramework(), { wrapper });
+    act(() => result.current.mutate({ ...input, levels: [{ code: 'cuisine', name: 'Cuisine' }] }));
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(competencyFrameworkService.createMasterCategory).toHaveBeenCalledWith({ code: 'cuisine', name: 'Cuisine' });
+    expect(competencyFrameworkService.attachCategory).toHaveBeenCalledTimes(2);
+  });
+
+  it('fails when the missing master category cannot be created', async () => {
+    vi.mocked(competencyFrameworkService.create).mockResolvedValue({ data: { node_id: 'fw_cook' }, status: 200, headers: {} });
+    vi.mocked(competencyFrameworkService.attachCategory).mockRejectedValue(apiError({ status: 400, errCode: 'ERR_CATEGORY_NOT_FOUND' }));
+    vi.mocked(competencyFrameworkService.createMasterCategory).mockRejectedValue(apiError({ status: 403, errCode: 'ERR_FORBIDDEN' }));
+    const { result } = renderHook(() => useCreateCompetencyFramework(), { wrapper });
+    act(() => result.current.mutate({ ...input, levels: [{ code: 'cuisine', name: 'Cuisine' }] }));
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(result.current.error?.errCode).toBe('ERR_FORBIDDEN');
   });
 });

@@ -7,8 +7,10 @@ import {
   useCreateCompetencyFramework,
   useReadCompetencyFramework,
 } from '@/hooks/useCompetencyFrameworkAdmin';
-import type { CompetencyFrameworkDetails } from '@/services/CompetencyFrameworkService';
+import { SKILL_FRAMEWORK_CATEGORIES, type CompetencyFrameworkDetails, type FrameworkLevel } from '@/services/CompetencyFrameworkService';
 import { describeFrameworkError } from './frameworkErrors';
+import { LevelsEditor } from './LevelsEditor';
+import { levelsValid } from './frameworkLevels';
 
 interface FrameworkPickerProps {
   /** The admin's root-org channel. The portal proxy sends it as X-Channel-Id, which Knowlg applies over any body value. */
@@ -19,6 +21,10 @@ interface FrameworkPickerProps {
 
 // Becomes the framework identifier and a URL path segment, so keep it to safe characters.
 const CODE_PATTERN = /^[A-Za-z0-9_-]+$/;
+
+/** The framework code a name suggests: "Nursing Skills" -> nursing_skills. */
+export const frameworkCodeFromName = (name: string): string =>
+  name.trim().toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_-]/g, '');
 const inputClass = 'rounded-lg border border-sunbird-gray-e5 bg-surface px-3 py-2';
 
 /** Step 1: pick an existing competency framework, or create a new one. */
@@ -30,10 +36,11 @@ export function FrameworkPicker({ channel, orgName, onSelected }: FrameworkPicke
   const [mode, setMode] = useState<'existing' | 'new'>('existing');
   const [frameworkId, setFrameworkId] = useState('');
   const [form, setForm] = useState({ name: '', code: '', description: '' });
+  const [levels, setLevels] = useState<FrameworkLevel[]>(() => SKILL_FRAMEWORK_CATEGORIES.map((l) => ({ ...l })));
 
   const code = form.code.trim();
   const codeInvalid = code !== '' && !CODE_PATTERN.test(code);
-  const canCreate = Boolean(form.name.trim() && code && channel) && !codeInvalid && !create.isPending;
+  const canCreate = Boolean(form.name.trim() && code && channel) && !codeInvalid && levelsValid(levels) && !create.isPending;
   const error = read.error ?? create.error;
 
   const load = (id: string, isNew: boolean) =>
@@ -41,7 +48,7 @@ export function FrameworkPicker({ channel, orgName, onSelected }: FrameworkPicke
 
   const handleCreate = () =>
     create.mutate(
-      { name: form.name.trim(), code, channel, description: form.description.trim() },
+      { name: form.name.trim(), code, channel, description: form.description.trim(), levels },
       { onSuccess: (id) => load(id, true) }
     );
 
@@ -81,7 +88,17 @@ export function FrameworkPicker({ channel, orgName, onSelected }: FrameworkPicke
         <div className="flex flex-col gap-3 text-sm">
           <label className="flex flex-col gap-1">
             {t('userManagement.skillFramework.name')}
-            <input className={inputClass} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} data-testid="skill-framework-name" />
+            <input
+              className={inputClass}
+              value={form.name}
+              // The code follows the name until the admin edits the code themselves.
+              onChange={(e) => setForm({
+                ...form,
+                name: e.target.value,
+                code: form.code === frameworkCodeFromName(form.name) ? frameworkCodeFromName(e.target.value) : form.code,
+              })}
+              data-testid="skill-framework-name"
+            />
           </label>
           <label className="flex flex-col gap-1">
             {t('userManagement.skillFramework.code')}
@@ -98,6 +115,7 @@ export function FrameworkPicker({ channel, orgName, onSelected }: FrameworkPicke
             {t('userManagement.skillFramework.description')}
             <textarea className={inputClass} rows={2} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} data-testid="skill-framework-description" />
           </label>
+          <LevelsEditor levels={levels} onChange={setLevels} disabled={create.isPending} />
           <div>
             <Button disabled={!canCreate} onClick={handleCreate} data-testid="skill-framework-create">
               {create.isPending ? t('userManagement.skillFramework.creating') : t('userManagement.skillFramework.create')}

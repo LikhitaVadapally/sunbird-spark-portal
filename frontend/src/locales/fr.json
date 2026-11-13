@@ -1326,7 +1326,7 @@
       "loading": "Opening…",
       "name": "Name",
       "code": "Code",
-      "codeHint": "Becomes the framework ID and cannot be changed later. Letters, numbers, - and _ only.",
+      "codeHint": "Rempli à partir du nom. Devient l'identifiant du référentiel et ne peut plus être modifié. Lettres, chiffres, - et _ uniquement.",
       "organisation": "Organisation",
       "noOrganisation": "No organisation found for your account",
       "description": "Description",
@@ -1392,6 +1392,23 @@
         "notFound": "Framework not found. Check the framework ID.",
         "withDetail": "Something went wrong: {{detail}}",
         "generic": "Something went wrong. Please try again."
+      },
+      "levels": {
+        "title": "Niveaux",
+        "hint": "Du haut vers le bas. Le dernier niveau contient les compétences associées aux cours. Gardez les valeurs par défaut sauf si votre référentiel a besoin d'autres niveaux.",
+        "level": "Niveau {{n}}",
+        "skillsLevel": "Niveau des compétences",
+        "name": "Nom du niveau",
+        "code": "Code du niveau",
+        "add": "Ajouter un niveau",
+        "remove": "Supprimer le niveau",
+        "errors": {
+          "empty": "Saisissez un nom et un code.",
+          "invalid": "Le code doit commencer par une lettre et ne contenir que des lettres et des chiffres.",
+          "reserved": "Ce code est déjà utilisé par les détails du cours. Choisissez-en un autre.",
+          "duplicate": "Chaque niveau doit avoir son propre code."
+        },
+        "codeHeader": "Code (utilisé dans la colonne Category du CSV)"
       }
     }
   },

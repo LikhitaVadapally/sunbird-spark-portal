@@ -85,9 +85,42 @@ describe('SkillFrameworkTab', () => {
     fireEvent.change(screen.getByTestId('skill-framework-code'), { target: { value: ' nursing_skills ' } });
     fireEvent.click(screen.getByTestId('skill-framework-create'));
     expect(create.mutate).toHaveBeenCalledWith(
-      { name: 'Nursing', code: 'nursing_skills', channel: 'ch1', description: '' },
+      {
+        name: 'Nursing', code: 'nursing_skills', channel: 'ch1', description: '',
+        levels: [
+          { code: 'competencyarea', name: 'Competency Area' },
+          { code: 'competency', name: 'Competency' },
+          { code: 'skill', name: 'Skill' },
+        ],
+      },
       expect.anything()
     );
+  });
+
+  it('blocks Create while a level is not accepted', () => {
+    renderTab();
+    fireEvent.click(screen.getByTestId('skill-framework-mode-new'));
+    fireEvent.change(screen.getByTestId('skill-framework-name'), { target: { value: 'Cooking' } });
+    fireEvent.change(screen.getByTestId('skill-framework-code'), { target: { value: 'fw_cook' } });
+    expect(screen.getByTestId('skill-framework-create')).toBeEnabled();
+    fireEvent.change(screen.getByTestId('skill-framework-level-name-2'), { target: { value: 'Subject' } });
+    expect(screen.getByTestId('skill-framework-create')).toBeDisabled();
+    fireEvent.change(screen.getByTestId('skill-framework-level-name-2'), { target: { value: 'Cuisine' } });
+    fireEvent.click(screen.getByTestId('skill-framework-create'));
+    expect(create.mutate).toHaveBeenCalledWith(
+      expect.objectContaining({ levels: expect.arrayContaining([{ code: 'cuisine', name: 'Cuisine' }]) }),
+      expect.anything()
+    );
+  });
+
+  it('fills the framework code from the name until the code is edited', () => {
+    renderTab();
+    fireEvent.click(screen.getByTestId('skill-framework-mode-new'));
+    fireEvent.change(screen.getByTestId('skill-framework-name'), { target: { value: 'Nursing Skills!' } });
+    expect(screen.getByTestId('skill-framework-code')).toHaveValue('nursing_skills');
+    fireEvent.change(screen.getByTestId('skill-framework-code'), { target: { value: 'nurse_fw' } });
+    fireEvent.change(screen.getByTestId('skill-framework-name'), { target: { value: 'Nursing' } });
+    expect(screen.getByTestId('skill-framework-code')).toHaveValue('nurse_fw');
   });
 
   // The code becomes the identifier and a URL segment.

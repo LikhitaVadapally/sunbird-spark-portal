@@ -182,6 +182,8 @@ describe('portalProxyRoutes - competency framework admin routes', () => {
 
     const adminRoutes: Array<['post' | 'patch' | 'get' | 'delete', string]> = [
         ['post', '/portal/competency-framework/v3/create'],
+        ['post', '/portal/framework/v1/category/create'],
+        ['post', '/portal/framework/v3/category/master/create'],
         ['patch', '/portal/competency-framework/v3/update/fw1'],
         ['post', '/portal/competency-framework/v3/publish/fw1'],
         ['post', '/portal/competency-framework/v3/review/fw1'],

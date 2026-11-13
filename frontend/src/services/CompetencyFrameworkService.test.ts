@@ -60,6 +60,20 @@ describe('CompetencyFrameworkService', () => {
     });
   });
 
+  // Field names follow the existing master categories (skill -> targetSkillIds, se_skills, ...).
+  it('creates a master category with field names derived from its code', async () => {
+    await service.createMasterCategory({ code: 'cuisine', name: 'Cuisine' });
+    expect(mockClient.post).toHaveBeenCalledWith('/framework/v3/category/master/create', {
+      request: {
+        category: {
+          name: 'Cuisine', description: 'Cuisine', code: 'cuisine',
+          targetIdFieldName: 'targetCuisineIds', searchLabelFieldName: 'se_cuisines',
+          searchIdFieldName: 'se_cuisineIds', orgIdFieldName: 'cuisineIds',
+        },
+      },
+    });
+  });
+
   it('asks for the term export of a framework', async () => {
     await service.downloadTerms('fw1');
     expect(mockClient.get).toHaveBeenCalledWith('/framework/v3/term/download/fw1');

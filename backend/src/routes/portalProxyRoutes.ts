@@ -79,6 +79,8 @@ const frameworkAdmin = [requireAuth(), requireRole(['ORG_ADMIN']), kongProxy];
 router.post('/competency-framework/v3/create', ...frameworkAdmin);
 // Attaches a category level to a new framework (Kong -> knowledge-mw -> Knowlg).
 router.post('/framework/v1/category/create', ...frameworkAdmin);
+// Creates a master category, for a level no framework has used yet (global in Knowlg).
+router.post('/framework/v3/category/master/create', ...frameworkAdmin);
 router.patch('/competency-framework/v3/update/:identifier', ...frameworkAdmin);
 router.post('/competency-framework/v3/publish/:identifier', ...frameworkAdmin);
 router.post('/competency-framework/v3/review/:identifier', ...frameworkAdmin);

@@ -4,6 +4,7 @@ import {
   SKILL_FRAMEWORK_CATEGORIES,
   type CompetencyFrameworkDetails,
   type CreateCompetencyFrameworkInput,
+  type FrameworkLevel,
   type TermCommitResult,
   type TermValidationResult,
 } from '@/services/CompetencyFrameworkService';
@@ -41,20 +42,41 @@ export function useReadCompetencyFramework() {
   });
 }
 
+export type CreateFrameworkVars = CreateCompetencyFrameworkInput & {
+  /** Levels top to bottom; the last one holds the skills. Defaults to SKILL_FRAMEWORK_CATEGORIES. */
+  levels?: readonly FrameworkLevel[];
+};
+
+const skipDuplicate = (e: FrameworkApiError) => {
+  if (e?.errCode !== 'ERR_DUPLICATE_CODE') throw e;
+};
+
 /**
- * Creates the framework, then attaches its category levels one by one, top level first (Knowlg
- * keeps them in attach order). A level that is already attached is skipped, so retrying after a
- * partial failure is safe.
+ * Attaches one level. A level no framework has used yet isn't a Knowlg master category, so the
+ * attach answers ERR_CATEGORY_NOT_FOUND: create the master category, then attach again.
+ */
+async function attachLevel(frameworkId: string, level: FrameworkLevel): Promise<void> {
+  try {
+    await competencyFrameworkService.attachCategory(frameworkId, level);
+  } catch (e) {
+    const err = e as FrameworkApiError;
+    if (err?.errCode === 'ERR_DUPLICATE_CODE') return;
+    if (err?.errCode !== 'ERR_CATEGORY_NOT_FOUND') throw err;
+    await competencyFrameworkService.createMasterCategory(level);
+    await competencyFrameworkService.attachCategory(frameworkId, level).catch(skipDuplicate);
+  }
+}
+
+/**
+ * Creates the framework, then attaches its levels one by one, top level first (Knowlg keeps them
+ * in attach order). A level that is already attached is skipped, so retrying after a partial
+ * failure is safe.
  */
 export function useCreateCompetencyFramework() {
-  return useMutation<string, FrameworkApiError, CreateCompetencyFrameworkInput>({
-    mutationFn: async (input) => {
+  return useMutation<string, FrameworkApiError, CreateFrameworkVars>({
+    mutationFn: async ({ levels = SKILL_FRAMEWORK_CATEGORIES, ...input }) => {
       const id = (await competencyFrameworkService.create(input)).data?.node_id ?? input.code;
-      for (const category of SKILL_FRAMEWORK_CATEGORIES) {
-        await competencyFrameworkService.attachCategory(id, category).catch((e: FrameworkApiError) => {
-          if (e?.errCode !== 'ERR_DUPLICATE_CODE') throw e;
-        });
-      }
+      for (const level of levels) await attachLevel(id, level);
       return id;
     },
   });
