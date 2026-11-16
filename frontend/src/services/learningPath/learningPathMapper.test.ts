@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseLearningPath } from './learningPathMapper';
+import { parseLearningPath, skillSource } from './learningPathMapper';
 import { LP_HIERARCHY_NO_ASSESSMENTS } from './__fixtures__/lpHierarchyNoAssessments.fixture';
 import {
   LP_HIERARCHY_WITH_ASSESSMENTS,
@@ -237,3 +237,36 @@ describe('parseLearningPath', () => {
   });
 });
 
+
+// A path on a framework whose last level is e.g. Cuisine stores skills under `cuisine`, not `skill`.
+describe('skill field', () => {
+  const course = (id: string, extra: Record<string, unknown>) =>
+    ({ identifier: id, name: id, mimeType: 'application/vnd.ekstep.content-collection', children: [], ...extra });
+  const root = {
+    identifier: 'lp', name: 'LP', competencyFramework: 'culinary_test',
+    cuisine: ['cuisine-french'], skill: ['farmer-counselling'],
+    children: [{
+      identifier: 'l1', name: 'Level 1', index: 1,
+      cuisine: ['cuisine-french'], skill: ['farmer-counselling'],
+      children: [course('c1', { cuisine: ['cuisine-french'] })],
+    }],
+  };
+
+  it('reads courses, Levels and the path from the given field, ignoring a stale `skill`', () => {
+    const model = parseLearningPath(root as never, 'cuisine');
+    expect(model.allSkillCodes).toEqual(['cuisine-french']);
+    expect(model.levels[0]!.skillCodes).toEqual(['cuisine-french']);
+    expect(model.levels[0]!.courses[0]!.skillCodes).toEqual(['cuisine-french']);
+  });
+
+  it('reads `skill` when the field is unknown, as before', () => {
+    expect(parseLearningPath(root as never).allSkillCodes).toEqual(['farmer-counselling']);
+  });
+
+  it('skillSource falls back to the field\'s se_ copy, like se_skills for skill', () => {
+    expect(skillSource({ cuisine: ['a'] }, 'cuisine')).toEqual(['a']);
+    expect(skillSource({ se_cuisines: ['b'] }, 'cuisine')).toEqual(['b']);
+    expect(skillSource({ skill: ['c'] })).toEqual(['c']);
+    expect(skillSource({ cuisine: ['a'] })).toEqual([]);
+  });
+});

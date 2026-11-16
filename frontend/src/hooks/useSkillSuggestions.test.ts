@@ -7,6 +7,11 @@ import type { PathSkillSummary } from '../services/learningPath/skillAggregation
 import type { HierarchyContentNode } from '../types/collectionTypes';
 
 const mockUseContentSearch = vi.fn();
+// Skill-framework fields come from a framework read; these tests use `skill` (field unknown).
+vi.mock('./useSkillFields', () => ({
+  useSkillFields: () => ({ fieldOf: () => undefined, isLoading: false }),
+}));
+
 vi.mock('./useContent', () => ({
   useContentSearch: (...args: unknown[]) => mockUseContentSearch(...args),
 }));

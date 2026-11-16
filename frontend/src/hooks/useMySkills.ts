@@ -6,6 +6,7 @@ import { useViewerSummary } from './useViewerSummary';
 import { useSkillLabels, useSkillProfile } from './useSkillProfile';
 import { getPathSummary, indexSummaryByCollectionId, parseCourseContextId } from '../services/viewer/summaryMapper';
 import { parseLearningPath } from '../services/learningPath/learningPathMapper';
+import { useSkillFields } from './useSkillFields';
 import { buildPathSkillSummary } from '../services/learningPath/skillAggregation';
 import { aggregateMySkills, buildMySkills, heldCodeSet } from '../services/skill/mySkills';
 import { indexPathNodes, withEvidenceSources } from '../services/skill/evidenceSources';
@@ -94,13 +95,19 @@ export function useMySkills(): UseMySkillsResult {
 
   const summaryByCollectionId = useMemo(() => indexSummaryByCollectionId(summaryRecords), [summaryRecords]);
 
+  // Each path's skill tags live in its skill-framework field (`cuisine`, ...), not always `skill`.
+  const pathFrameworkIds = useMemo(
+    () => hierarchyQueries.map((q) => (q?.data as CollectionData | null | undefined)?.hierarchyRoot?.competencyFramework),
+    [hierarchyQueries]
+  );
+  const { fieldOf } = useSkillFields(pathFrameworkIds);
   const models = useMemo(
     () =>
       hierarchyQueries.map((query) => {
         const root = (query?.data as CollectionData | null | undefined)?.hierarchyRoot;
-        return root ? parseLearningPath(root) : null;
+        return root ? parseLearningPath(root, fieldOf(root.competencyFramework)) : null;
       }),
-    [hierarchyQueries]
+    [hierarchyQueries, fieldOf]
   );
 
   // Every framework in play: the profile's for gained names, each path's for its tags.

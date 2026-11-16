@@ -8,6 +8,9 @@ import { useBatchListForMentor } from './useBatch';
 import { useIsMentor } from './useUser';
 import userAuthInfoService from '../services/userAuthInfoService/userAuthInfoService';
 import { parseLearningPath } from '../services/learningPath/learningPathMapper';
+import { useSkillFields } from './useSkillFields';
+import { useSkillLabels } from './useSkillProfile';
+import { withSkillNames } from '../services/learningPath/skillNames';
 import {
   computeCourseProgress,
   computeLevelProgress,
@@ -18,6 +21,8 @@ import {
   getResumeTarget,
 } from '../services/learningPath/learningPathProgress';
 import { getPathSummary, buildCourseSummaryMapForContext } from '../services/viewer/summaryMapper';
+
+const NO_IDS: string[] = [];
 
 /**
  * Composes the Learning Path hierarchy, Viewer Service progress, and
@@ -43,7 +48,21 @@ export function useLearningPath(pathId: string | undefined, contextIdParam: stri
   const { data: mentorBatches } = useBatchListForMentor(pathId, { enabled: isMentorRole });
   const isMentorViewingPath = (mentorBatches?.length ?? 0) > 0;
 
-  const model = useMemo(() => parseLearningPath(hierarchyData?.hierarchyRoot ?? null), [hierarchyData]);
+  // Skill tags live in the path's skill-framework field (`cuisine`, ...), not always `skill`.
+  const pathFrameworkId = hierarchyData?.hierarchyRoot?.competencyFramework;
+  const { fieldOf } = useSkillFields([pathFrameworkId]);
+  const skillField = fieldOf(pathFrameworkId);
+  // Skill names come from the framework ("French Cuisine"), as on the course page; until it loads,
+  // or for a code it doesn't know, the de-slugged code is shown.
+  const nameFrameworkId = pathFrameworkId ?? hierarchyData?.hierarchyRoot?.framework;
+  const { labelOf } = useSkillLabels(nameFrameworkId ? [nameFrameworkId] : NO_IDS);
+  const model = useMemo(
+    () => withSkillNames(
+      parseLearningPath(hierarchyData?.hierarchyRoot ?? null, skillField),
+      (code) => labelOf(code, nameFrameworkId).name,
+    ),
+    [hierarchyData, skillField, labelOf, nameFrameworkId]
+  );
   const pathSummary = useMemo(
     () => getPathSummary(summaryRecords, pathId, contextIdParam),
     [summaryRecords, pathId, contextIdParam]

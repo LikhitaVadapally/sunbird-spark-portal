@@ -11,6 +11,11 @@ const LP_ID = LP_HIERARCHY_NO_ASSESSMENTS.identifier;
 
 let mockCourses: TrackableCollection[] = [];
 
+// Skill-framework fields come from a framework read; these tests use `skill` (field unknown).
+vi.mock('./useSkillFields', () => ({
+  useSkillFields: () => ({ fieldOf: () => undefined, isLoading: false }),
+}));
+
 vi.mock('./useUserEnrolledCollections', () => ({
   useUserEnrolledCollections: () => ({
     data: { data: { courses: mockCourses } },

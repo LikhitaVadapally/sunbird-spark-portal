@@ -23,6 +23,14 @@ let mockUseCollectionData: CollectionData | undefined = mockCollectionData;
 let mockSummaryRecords: ViewerSummaryRecord[] = [];
 let mockIsAuthenticated = true;
 
+// Skill-framework fields come from a framework read; these tests use `skill` (field unknown).
+vi.mock('./useSkillProfile', () => ({
+  useSkillLabels: () => ({ labelOf: (code: string) => ({ name: code, resolved: false }), codeOf: (t: string) => t, isLoading: false }),
+}));
+vi.mock('./useSkillFields', () => ({
+  useSkillFields: () => ({ fieldOf: () => undefined, isLoading: false }),
+}));
+
 vi.mock('./useCollection', () => ({
   useCollection: () => ({ data: mockUseCollectionData, isLoading: false, isError: false }),
 }));

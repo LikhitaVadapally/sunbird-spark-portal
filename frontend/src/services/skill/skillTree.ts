@@ -43,6 +43,12 @@ export interface SkillVocabulary {
   leaves: Record<string, LeafSkill>;
   /** Lower-cased skill name -> code, for content tagged by NAME (USF). See `toSkillCode`. */
   codeByName: Record<string, string>;
+  /**
+   * The content field this framework's skill tags live in: a competency framework's last
+   * category code (`skill`, `cuisine`, ...), as lern reads it. Unset for a taxonomy framework,
+   * whose content uses `skill`.
+   */
+  skillField?: string;
 }
 
 /** Categories whose terms are skills. USF's `industry`/`domain` terms must never match a tag. */

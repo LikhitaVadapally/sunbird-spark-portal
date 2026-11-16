@@ -3,6 +3,11 @@ import { render, screen } from '@testing-library/react';
 import CollectionOverview from './CollectionOverview';
 import type { CollectionData } from '@/types/collectionTypes';
 
+// Skill-framework fields come from a framework read; these tests use `skill` (field unknown).
+vi.mock('@/hooks/useSkillFields', () => ({
+  useSkillFields: () => ({ fieldOf: () => undefined, isLoading: false }),
+}));
+
 vi.mock('@/hooks/useAppI18n', () => ({
   useAppI18n: () => ({
     t: (key: string) => key,

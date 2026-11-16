@@ -14,8 +14,6 @@ interface LeafTermWire {
 
 type CategoryWire = { code?: string; index?: number; terms?: LeafTermWire[] };
 
-const ROOT_CATEGORY = 'competency';
-
 /** The way down from a term: `children`, else associations that leave its own category. */
 function treeOf(categories: CategoryWire[]) {
   const index = new Map<string, LeafTermWire>();
@@ -33,50 +31,44 @@ function treeOf(categories: CategoryWire[]) {
   return { descendants };
 }
 
+/** Categories in authored order: by `index`, falling back to their position in the response. */
+function ordered(categories: CategoryWire[]): CategoryWire[] {
+  return categories
+    .map((c, pos) => ({ c, key: typeof c.index === 'number' ? c.index : pos }))
+    .sort((x, y) => x.key - y.key)
+    .map((x) => x.c);
+}
+
+/**
+ * The content field a framework's skill tags live in: the code of its LAST category by `index`
+ * (lern `CompetencyFrameworkUtil.parseSkillField`). `skill` for most frameworks, but an admin can
+ * name the last level anything, e.g. `cuisine`.
+ */
+export function frameworkSkillField(body: TaxonomyFrameworkResponse | undefined | null): string | undefined {
+  const cats = ordered(frameworkCategories(body) as CategoryWire[]);
+  return cats[cats.length - 1]?.code || undefined;
+}
+
 /**
  * The framework's skills (leaf codes), worked out the way lern does it
  * (`CompetencyFrameworkUtil.parseTree`), so the role editor offers exactly what lern accepts.
  *
- * lern's `role/list` no longer returns `leafSkills`, so the portal reads them from the framework.
- * The walk starts at the `competency` category and accepts all three authoring shapes:
- *   1. `children`      - tiers nested inside the `competency` category;
- *   2. `associations`  - tiers in separate categories (competencyarea / competency / skill). Only
- *                        associations that LEAVE the term's own category are followed, and each hop
- *                        is looked up by identifier, because association entries are shallow;
- *   3. `parentCode`    - a flat list: a code nobody names as its parent is a leaf.
+ * The skills are the terms of the framework's LAST category, whatever it is named. Inside it, terms
+ * may still nest by `children` or name a `parentCode`/`parents` in the same category; then only a
+ * term nobody descends from is a skill. Categories above it are grouping only.
  */
 export function frameworkLeaves(body: TaxonomyFrameworkResponse | undefined | null): string[] {
-  const categories = frameworkCategories(body) as CategoryWire[];
-  const roots = categories.find((c) => c.code === ROOT_CATEGORY)?.terms ?? [];
-  if (roots.length === 0) return [];
-  const { descendants } = treeOf(categories);
-
-  const leaves = new Set<string>();
-  let maxTier = 0;
-  const walk = (t: LeafTermWire, tier: number, seen: Set<string>) => {
-    if (t.identifier && seen.has(t.identifier)) return;
-    const nextSeen = t.identifier ? new Set(seen).add(t.identifier) : seen;
-    const next = descendants(t, nextSeen);
-    if (next.length === 0) {
-      if (t.code) leaves.add(t.code);
-      maxTier = Math.max(maxTier, tier);
-    } else next.forEach((n) => walk(n, tier + 1, nextSeen));
-  };
-  roots.forEach((r) => walk(r, 1, new Set()));
-  if (maxTier > 1) return [...leaves].sort();
-
-  // Flat shape: anything that is nobody's parent is a leaf.
-  const parentOf = new Map<string, string>();
-  roots.forEach((t) => {
-    const parent = t.parentCode ?? t.parents?.find((p) => p.code)?.code;
-    if (t.code && parent) parentOf.set(t.code, parent);
-  });
-  if (parentOf.size === 0) return [...leaves].sort();
-  const parents = new Set(parentOf.values());
-  return roots
-    .map((t) => t.code)
-    .filter((c): c is string => Boolean(c) && !parents.has(c as string))
-    .sort();
+  const cats = ordered(frameworkCategories(body) as CategoryWire[]);
+  const flatten = (terms: LeafTermWire[]): LeafTermWire[] => terms.flatMap((t) => [t, ...flatten(t.children ?? [])]);
+  const all = flatten(cats[cats.length - 1]?.terms ?? []);
+  const codes = new Set(all.map((t) => t.code).filter((c): c is string => Boolean(c)));
+  const parents = new Set(
+    all
+      .map((t) => t.parentCode ?? t.parents?.find((p) => p.code)?.code)
+      .filter((p): p is string => Boolean(p) && codes.has(p as string))
+  );
+  const leaves = all.filter((t) => t.code && !t.children?.length && !parents.has(t.code)).map((t) => t.code as string);
+  return [...new Set(leaves)].sort();
 }
 
 /**
@@ -126,5 +118,5 @@ export function frameworkVocabulary(
   });
   const codeByName: Record<string, string> = {};
   Object.entries(names).forEach(([key, code]) => code && (codeByName[key] = code));
-  return { frameworkId, labels, leaves, codeByName };
+  return { frameworkId, labels, leaves, codeByName, skillField: frameworkSkillField(body) };
 }

@@ -101,29 +101,27 @@ function displayable(codes: string[] | undefined): string[] {
 }
 
 /**
- * `skill` wins; `se_skills` is only a fallback.
+ * A node's skill tags, read from `skillField`: the field its skill framework stores them in (the
+ * framework's last category code - `skill` for most, `cuisine` for one whose last level is Cuisine;
+ * see `frameworkSkillField`). Defaults to `skill`, so a path whose framework isn't known reads as
+ * before.
  *
- * NOT A UNION. Verified against live V3 content, `se_skills` is the platform's search-enriched
- * COPY of `skill` - byte for byte the same codes:
- *   skill     ['dosage-calculation', 'iv-administration']
- *   se_skills ['dosage-calculation', 'iv-administration']
- * Unioning them listed every competency twice in different casing ("Dosage calculation" AND
- * "dosage-calculation"), so the V3 path reported 16 skills for the 8 it teaches.
- *
- * The fallback is kept because older content exists that carries `se_skills` with no `skill` at
- * all, holding genuine taxonomy labels rather than competency codes. Preferring `skill` covers the
- * competency case without dropping those.
+ * The field wins; its `se_` copy (`se_skills`) is only a fallback, NOT a union: `se_skills` is the
+ * search-enriched copy of `skill`, so unioning listed every competency twice. The fallback stays
+ * for older content carrying only `se_skills` (taxonomy labels).
  */
-export function skillSource(node: { skill?: string[]; se_skills?: string[] }): string[] {
-  const own = (node.skill ?? []).filter(Boolean);
-  return own.length > 0 ? own : (node.se_skills ?? []).filter(Boolean);
+export function skillSource(node: object, skillField = 'skill'): string[] {
+  const fields = node as Record<string, unknown>;
+  const list = (v: unknown): string[] => (Array.isArray(v) ? v.map(String).filter(Boolean) : []);
+  const own = list(fields[skillField]);
+  return own.length > 0 ? own : list(fields[`se_${skillField}s`]);
 }
 
-function mapCourseNode(courseNode: HierarchyContentNode): LPCourseNode {
+function mapCourseNode(courseNode: HierarchyContentNode, skillField?: string): LPCourseNode {
   const leafIds = getLeafContentIdsFromHierarchy(courseNode);
   // Codes follow the same `skill` -> `se_skills` preference as the display list, so a course
   // carrying only the search-enriched copy still counts toward My Skills.
-  const skillCodes = skillSource(courseNode);
+  const skillCodes = skillSource(courseNode, skillField);
   const skills = displayable(skillCodes);
   const isAssessment = isAssessmentCourse(courseNode, leafIds);
   return {
@@ -141,9 +139,9 @@ function mapCourseNode(courseNode: HierarchyContentNode): LPCourseNode {
   };
 }
 
-function mapLevelNode(levelNode: HierarchyContentNode): LPLevelNode {
-  const courses = (levelNode.children ?? []).map(mapCourseNode);
-  const ownCodes = skillSource(levelNode);
+function mapLevelNode(levelNode: HierarchyContentNode, skillField?: string): LPLevelNode {
+  const courses = (levelNode.children ?? []).map((c) => mapCourseNode(c, skillField));
+  const ownCodes = skillSource(levelNode, skillField);
   const ownSkills = displayable(ownCodes);
   const skills = ownSkills.length > 0 ? ownSkills : unionSkills(...courses.map((c) => c.skills));
   return {
@@ -171,7 +169,11 @@ function resolvePolicy(raw: string | undefined): LearningPathPolicy {
  * assessment course inside a middle Level stays a normal course in that
  * Level (badged "Question set only" in the UI), not unwrapped.
  */
-export function parseLearningPath(root: HierarchyContentNode | null | undefined): LearningPathModel {
+export function parseLearningPath(
+  root: HierarchyContentNode | null | undefined,
+  /** The path's skill field (see `skillSource`); `skill` when unknown. */
+  skillField?: string,
+): LearningPathModel {
   if (!root) {
     return {
       identifier: '',
@@ -186,7 +188,7 @@ export function parseLearningPath(root: HierarchyContentNode | null | undefined)
   }
 
   const levelNodes = [...(root.children ?? [])].sort((a, b) => (a.index ?? 0) - (b.index ?? 0));
-  let levels = levelNodes.map(mapLevelNode);
+  let levels = levelNodes.map((l) => mapLevelNode(l, skillField));
 
   let priorAssessment: LPCourseNode | undefined;
   const first = levels[0];
@@ -214,8 +216,11 @@ export function parseLearningPath(root: HierarchyContentNode | null | undefined)
   );
   // Prefer the root's own tag: it is the authoritative union, written at publish. Fall back to the
   // children's codes for a path published before the root carried one.
-  const allSkillCodes = (root.skill ?? []).filter(Boolean).length
-    ? [...new Set((root.skill ?? []).filter(Boolean))]
+  // The root's own field only (no se_ fallback), as before: a taxonomy label there isn't a code.
+  const rootRaw = (root as unknown as Record<string, unknown>)[skillField ?? 'skill'];
+  const rootCodes = (Array.isArray(rootRaw) ? rootRaw.map(String) : []).filter(Boolean);
+  const allSkillCodes = rootCodes.length
+    ? [...new Set(rootCodes)]
     : [...new Set([
         ...(priorAssessment?.skillCodes ?? []),
         ...levels.flatMap((l) => l.skillCodes),

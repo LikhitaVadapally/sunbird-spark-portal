@@ -7,6 +7,7 @@ import PageLoader from "@/components/common/PageLoader";
 import { Toaster } from "@/components/common/Toaster";
 import { CourseSkillsSection } from "./CourseSkillsSection";
 import { skillSource } from "@/services/learningPath/learningPathMapper";
+import { useSkillFields } from "@/hooks/useSkillFields";
 
 interface CollectionOverviewProps {
   collectionData: CollectionData;
@@ -49,7 +50,9 @@ const CollectionOverview = ({
 }: CollectionOverviewProps) => {
   const { t } = useAppI18n();
   const root = collectionData.hierarchyRoot;
-  const skillCodes = root ? skillSource(root) : [];
+  // A course's skill tags live in its skill-framework field (`cuisine`, ...), not always `skill`.
+  const { fieldOf } = useSkillFields([root?.competencyFramework]);
+  const skillCodes = root ? skillSource(root, fieldOf(root.competencyFramework)) : [];
 
   return (
     <div className="collection-overview-container">

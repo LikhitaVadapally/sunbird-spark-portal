@@ -1,12 +1,23 @@
 import { describe, it, expect } from 'vitest';
-import { frameworkLeaves, frameworkVocabulary } from './skillLeaves';
+import { frameworkLeaves, frameworkSkillField, frameworkVocabulary } from './skillLeaves';
 
 const fw = (categories: unknown[]) => ({ framework: { categories } }) as Parameters<typeof frameworkLeaves>[0];
 
 describe('frameworkLeaves', () => {
-  it('returns nothing without a competency category', () => {
+  it('returns nothing without categories', () => {
     expect(frameworkLeaves(undefined)).toEqual([]);
-    expect(frameworkLeaves(fw([{ code: 'skill', terms: [{ code: 'x' }] }]))).toEqual([]);
+    expect(frameworkLeaves(fw([]))).toEqual([]);
+  });
+
+  // lern reads the skills from the framework's LAST category, whatever it is named.
+  it('takes the skills from the last category by index, even with no "competency" category', () => {
+    const body = fw([
+      { code: 'cuisine', index: 3, terms: [{ code: 'FR2' }, { code: 'IT1' }] },
+      { code: 'ingredient', index: 1, terms: [{ code: 'I1' }] },
+      { code: 'technique', index: 2, terms: [{ code: 'T1' }] },
+    ]);
+    expect(frameworkLeaves(body)).toEqual(['FR2', 'IT1']);
+    expect(frameworkLeaves(fw([{ code: 'skill', terms: [{ code: 'x' }] }]))).toEqual(['x']);
   });
 
   it('reads nested children: only terms with no children are skills', () => {
@@ -71,6 +82,18 @@ describe('frameworkLeaves', () => {
   it('reads the enveloped response too', () => {
     const body = { result: { framework: { categories: [{ code: 'competency', terms: [{ code: 'a', children: [{ code: 'b' }] }] }] } } };
     expect(frameworkLeaves(body as Parameters<typeof frameworkLeaves>[0])).toEqual(['b']);
+  });
+});
+
+describe('frameworkSkillField', () => {
+  it('is the last category\'s code: the field courses store skill tags in', () => {
+    expect(frameworkSkillField(fw([{ code: 'competencyarea', index: 1 }, { code: 'cuisine', index: 3 }, { code: 'competency', index: 2 }]))).toBe('cuisine');
+    expect(frameworkSkillField(fw([{ code: 'competency' }, { code: 'skill' }]))).toBe('skill');
+    expect(frameworkSkillField(undefined)).toBeUndefined();
+  });
+
+  it('is carried on the vocabulary', () => {
+    expect(frameworkVocabulary('fw', fw([{ code: 'cuisine', terms: [{ code: 'FR2', name: 'French' }] }])).skillField).toBe('cuisine');
   });
 });
 

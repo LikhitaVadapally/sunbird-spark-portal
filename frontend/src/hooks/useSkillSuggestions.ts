@@ -4,6 +4,7 @@ import { useContentSearch } from './useContent';
 import { collectionHierarchyQueryOptions } from './useCollection';
 import { useSkillLabels } from './useSkillProfile';
 import { parseLearningPath } from '../services/learningPath/learningPathMapper';
+import { useSkillFields } from './useSkillFields';
 import { derivePathSkillCodes, splitPathSkills } from '../services/learningPath/skillAggregation';
 import { withSkillCodes } from '../services/skill/skillCodes';
 import type { PathSkillSummary } from '../services/learningPath/skillAggregation';
@@ -86,13 +87,19 @@ export function useSkillSuggestions(
     queries: candidates.map((item) => collectionHierarchyQueryOptions(item.identifier)),
   });
 
+  // Each path's skill tags live in its skill-framework field (`cuisine`, ...), not always `skill`.
+  const candidateFrameworkIdsRaw = useMemo(
+    () => hierarchyQueries.map((q) => (q?.data as CollectionData | null | undefined)?.hierarchyRoot?.competencyFramework),
+    [hierarchyQueries]
+  );
+  const { fieldOf } = useSkillFields(candidateFrameworkIdsRaw);
   const candidateModels = useMemo(
     () =>
       hierarchyQueries.map((query) => {
         const root = (query?.data as CollectionData | null | undefined)?.hierarchyRoot;
-        return root ? parseLearningPath(root) : null;
+        return root ? parseLearningPath(root, fieldOf(root.competencyFramework)) : null;
       }),
-    [hierarchyQueries]
+    [hierarchyQueries, fieldOf]
   );
   const candidateFrameworkIds = useMemo(
     () => candidateModels.map((m) => m?.competencyFramework).filter((id): id is string => Boolean(id)),
