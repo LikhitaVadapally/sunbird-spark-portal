@@ -41,6 +41,8 @@ interface LedgerCourseRowProps {
    * visible and openable either way - only progress denominators exclude it.
    */
   isOptional?: boolean;
+  /** Defaults to `false`. When `true` (its Level is still locked), the row is listed but cannot be opened. */
+  isLocked?: boolean;
 }
 
 // "Revisit" rather than "Review" for a finished course: "Review" is taken by the
@@ -64,6 +66,7 @@ export function LedgerCourseRow({
   activeContentId = null,
   isEnrolled = true,
   isOptional = false,
+  isLocked = false,
   stateOf,
   skillName,
 }: LedgerCourseRowProps) {
@@ -71,6 +74,7 @@ export function LedgerCourseRow({
   const Icon = course.isAssessmentCourse ? FiHelpCircle : FiBookOpen;
   const units = course.units ?? [];
   const isExpandable = Boolean(onToggle) && units.length > 0;
+  const canOpen = isEnrolled && !isLocked;
 
   const grants = course.skillCodes ?? [];
   const nameOf = skillName ?? ((c: string) => c);
@@ -87,12 +91,12 @@ export function LedgerCourseRow({
   return (
     <div className="rounded-md border border-sunbird-gray-e5 bg-surface" data-testid="ledger-course-row-wrapper">
       <div
-        onClick={isEnrolled ? onOpen : undefined}
-        className={`flex items-center gap-3 px-3.5 py-3 ${isEnrolled ? 'cursor-pointer' : 'cursor-default'}`}
+        onClick={canOpen ? onOpen : undefined}
+        className={`flex items-center gap-3 px-3.5 py-3 ${canOpen ? 'cursor-pointer' : 'cursor-default'}`}
         data-testid="ledger-course-row"
-        role={isEnrolled ? 'button' : undefined}
-        tabIndex={isEnrolled ? 0 : undefined}
-        onKeyDown={(e) => isEnrolled && e.key === 'Enter' && onOpen()}
+        role={canOpen ? 'button' : undefined}
+        tabIndex={canOpen ? 0 : undefined}
+        onKeyDown={(e) => canOpen && e.key === 'Enter' && onOpen()}
       >
         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-sunbird-brick/15 text-sunbird-brick">
           <Icon className="h-4 w-4" />
@@ -123,7 +127,11 @@ export function LedgerCourseRow({
           )}
         </div>
         <span className="shrink-0 text-sm font-medium text-sunbird-brick">
-          {isEnrolled ? t(CTA_KEY[progress.status]) : t('learningPath.enrolToStart')}
+          {!isEnrolled
+            ? t('learningPath.enrolToStart')
+            : isLocked
+              ? t('learningPath.locked')
+              : t(CTA_KEY[progress.status])}
         </span>
         {isExpandable && (
           // Stops propagation so toggling the unit list never navigates into the course.

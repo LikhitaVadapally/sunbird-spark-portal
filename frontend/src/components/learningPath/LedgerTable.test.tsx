@@ -173,3 +173,33 @@ describe('LedgerTable prior row', () => {
     expect(onOpenPrior).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('LedgerTable locked level', () => {
+  // The first level starts open, so a click collapses it and a second one reopens it.
+  it('still expands, so the learner can see its courses', () => {
+    renderTable({ levelStatuses: ['locked'], isEnrolled: false });
+    expect(screen.getByText('LP-Course-1')).toBeInTheDocument();
+    expect(screen.queryByText(/learningPath.openLevelDetail/)).not.toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('ledger-level-row'));
+    expect(screen.queryByText('LP-Course-1')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('ledger-level-row'));
+    expect(screen.getByText('LP-Course-1')).toBeInTheDocument();
+  });
+
+  it('lists its courses as Locked and not openable, even for an enrolled learner (negative)', () => {
+    const onOpenCourse = vi.fn();
+    renderTable({ levelStatuses: ['locked'], isEnrolled: true, onOpenCourse });
+    const course = screen.getByTestId('ledger-course-row');
+    expect(within(course).getByText('learningPath.locked')).toBeInTheDocument();
+    fireEvent.click(course);
+    expect(onOpenCourse).not.toHaveBeenCalled();
+  });
+
+  it('opens courses of an unlocked level as before', () => {
+    const onOpenCourse = vi.fn();
+    renderTable({ levelStatuses: ['active'], onOpenCourse });
+    fireEvent.click(screen.getByTestId('ledger-course-row'));
+    expect(onOpenCourse).toHaveBeenCalledWith('course_1', 'leaf_1');
+    expect(screen.getByText(/learningPath.openLevelDetail/)).toBeInTheDocument();
+  });
+});

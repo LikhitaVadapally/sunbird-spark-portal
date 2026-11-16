@@ -47,17 +47,19 @@ export function LedgerLevelRow({
   return (
     <div>
       <div
-        onClick={isLocked ? undefined : onToggle}
-        onKeyDown={(e) => !isLocked && e.key === 'Enter' && onToggle()}
-        className={`grid grid-cols-[2.375rem_1fr_10rem_8.25rem_6.75rem] items-center gap-3.5 border-t border-sunbird-gray-e5 px-[1.125rem] py-3.5 ${
-          isLocked ? 'cursor-default opacity-65' : 'cursor-pointer'
+        // A locked level still opens, so the learner can see which courses it holds.
+        onClick={onToggle}
+        onKeyDown={(e) => e.key === 'Enter' && onToggle()}
+        className={`grid cursor-pointer grid-cols-[2.375rem_1fr_10rem_8.25rem_6.75rem] items-center gap-3.5 border-t border-sunbird-gray-e5 px-[1.125rem] py-3.5 ${
+          isLocked && !expanded ? 'opacity-65' : ''
         } ${expanded ? 'bg-sunbird-ivory' : 'bg-surface'}`}
         data-testid="ledger-level-row"
         role="button"
-        tabIndex={isLocked ? -1 : 0}
+        aria-expanded={expanded}
+        tabIndex={0}
       >
         <span className="flex items-center justify-center text-sunbird-gray-75">
-          {expanded && !isLocked ? <FiChevronDown /> : <FiChevronRight />}
+          {expanded ? <FiChevronDown /> : <FiChevronRight />}
         </span>
         <div>
           <span className="block text-sm font-medium text-foreground">
@@ -79,7 +81,7 @@ export function LedgerLevelRow({
         </span>
       </div>
 
-      {expanded && !isLocked && (
+      {expanded && (
         <div className="border-t border-dashed border-sunbird-gray-e5 bg-sunbird-ivory px-[1.125rem] py-4 pl-[4.375rem]">
           <div className="flex flex-col gap-2">
             {level.courses.map((course) => {
@@ -92,19 +94,22 @@ export function LedgerLevelRow({
                   onOpen={() => onOpenCourse(course.identifier, course.leafIds[0] ?? '')}
                   isEnrolled={isEnrolled}
                   isOptional={courseProgress.optional}
+                  isLocked={isLocked}
                   stateOf={stateOf}
                   skillName={skillName}
                 />
               );
             })}
           </div>
-          <button
-            type="button"
-            onClick={onOpenLevel}
-            className="mt-3.5 bg-transparent p-0 text-sm font-medium text-sunbird-brick"
-          >
-            {t('learningPath.openLevelDetail')} →
-          </button>
+          {!isLocked && (
+            <button
+              type="button"
+              onClick={onOpenLevel}
+              className="mt-3.5 bg-transparent p-0 text-sm font-medium text-sunbird-brick"
+            >
+              {t('learningPath.openLevelDetail')} →
+            </button>
+          )}
         </div>
       )}
     </div>
