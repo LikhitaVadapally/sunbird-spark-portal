@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { indexPathNodes, withEvidenceSources } from './evidenceSources';
+import { alsoTaughtIn, indexPathNodes, withEvidenceSources } from './evidenceSources';
+import { getMostReinforcedSkills } from './mySkills';
 import type { EvidenceSource } from './evidenceSources';
 import type { MySkillEntry, SkillPathRef } from './mySkills';
 import type { HierarchyContentNode } from '../../types/collectionTypes';
@@ -52,9 +53,16 @@ describe('withEvidenceSources', () => {
     expect(entry?.evidence[0]).toEqual(expect.objectContaining({ sourceName: 'ICU Final Assessment', sourcePath: ICU }));
   });
 
-  it('drops the earning path from the other paths, and keeps the rest', () => {
+  it('keeps every teaching path; "also taught in" drops the one it was earned in', () => {
     const [entry] = withEvidenceSources([gained('do_assess', [ICU, OTHER])], sources);
-    expect(entry?.paths).toEqual([OTHER]);
+    expect(entry?.paths).toEqual([ICU, OTHER]);
+    expect(alsoTaughtIn(entry!)).toEqual([OTHER]);
+  });
+
+  it('still counts the earned-in path as reinforcing the skill', () => {
+    // Taught by two paths, earned in one: it is reinforced by two, so it stays in the insight.
+    const entries = withEvidenceSources([gained('do_assess', [ICU, OTHER])], sources);
+    expect(getMostReinforcedSkills(entries).map((e) => e.code)).toEqual(['dosage']);
   });
 
   it('leaves evidence from an unknown source untouched', () => {

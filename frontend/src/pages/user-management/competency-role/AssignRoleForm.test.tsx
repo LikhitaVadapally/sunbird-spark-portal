@@ -26,7 +26,7 @@ beforeEach(() => {
     isLoading: false,
   });
   vi.mocked(useAssignRole).mockReturnValue({
-    mutate, isPending: false, isSuccess: false, isError: false,
+    mutate, reset: vi.fn(), isIdle: true, isPending: false, isSuccess: false, isError: false,
   } as unknown as ReturnType<typeof useAssignRole>);
 });
 
@@ -57,9 +57,20 @@ describe('AssignRoleForm', () => {
 
   it('reports a failure rather than silently doing nothing', () => {
     vi.mocked(useAssignRole).mockReturnValue({
-      mutate, isPending: false, isSuccess: false, isError: true,
+      mutate, reset: vi.fn(), isIdle: false, isPending: false, isSuccess: false, isError: true,
     } as unknown as ReturnType<typeof useAssignRole>);
     renderTab();
     expect(screen.getByTestId('competency-role-error')).toBeInTheDocument();
+  });
+  it('names the role that was assigned, not the one picked afterwards', () => {
+    const reset = vi.fn();
+    vi.mocked(useAssignRole).mockReturnValue({
+      mutate, reset, isIdle: false, isPending: false, isSuccess: true, isError: false,
+      variables: { userId: 'u1', frameworkId: 'fw', role: 'nursing-officer' },
+    } as unknown as ReturnType<typeof useAssignRole>);
+    renderTab();
+    expect(screen.getByTestId('competency-role-done')).toBeInTheDocument();
+    fireEvent.change(screen.getByTestId('competency-role-user'), { target: { value: 'u2' } });
+    expect(reset).toHaveBeenCalled();
   });
 });

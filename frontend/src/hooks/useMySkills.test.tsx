@@ -3,6 +3,7 @@ import { renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import { useMySkills } from './useMySkills';
+import { alsoTaughtIn } from '@/services/skill/evidenceSources';
 import { LP_HIERARCHY_NO_ASSESSMENTS } from '../services/learningPath/__fixtures__/lpHierarchyNoAssessments.fixture';
 import type { TrackableCollection } from '../types/TrackableCollections';
 import type { HeldSkill } from '../types/skillServiceTypes';
@@ -199,6 +200,8 @@ describe('useMySkills', () => {
         sourcePath: { pathId: LP_ID, contextId: 'batch-1', pathName: 'TLP-1' },
       })
     );
-    expect(jp?.paths.some((p) => p.pathId === LP_ID)).toBe(false);
+    // The earned-in path still counts as teaching it; only "also taught in" leaves it out.
+    expect(jp?.paths.some((p) => p.pathId === LP_ID)).toBe(true);
+    expect(alsoTaughtIn(jp!).some((p) => p.pathId === LP_ID)).toBe(false);
   });
 });

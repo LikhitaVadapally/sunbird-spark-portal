@@ -8,9 +8,10 @@ import {
   type TermCommitResult,
   type TermValidationResult,
 } from '@/services/CompetencyFrameworkService';
+import type { HttpError } from '@/lib/http-client';
 
 /** Error thrown by the http client; `errCode`/`result` come from the Sunbird response envelope. */
-export type FrameworkApiError = Error & { status?: number; errCode?: string; result?: unknown };
+export type FrameworkApiError = HttpError;
 
 export interface FrameworkOption {
   id: string;
@@ -18,26 +19,37 @@ export interface FrameworkOption {
   status?: string;
 }
 
+export interface FrameworkOptions {
+  options: FrameworkOption[];
+  isLoading: boolean;
+  isError: boolean;
+}
+
 /**
  * Frameworks to offer in the admin pickers: composite search for objectType CompetencyFramework
- * in the admin's channel. An org can have several. A failed search yields an empty list.
+ * in the admin's channel. An org can have several. Nothing is fetched until the channel is known:
+ * an unscoped search would return every tenant's frameworks.
  */
-export function useCompetencyFrameworkOptions(channel?: string): FrameworkOption[] {
+export function useCompetencyFrameworkOptions(channel: string): FrameworkOptions {
   const query = useQuery({
-    queryKey: ['competencyFrameworkList', channel ?? ''],
+    queryKey: ['competencyFrameworkList', channel],
     queryFn: async () => (await competencyFrameworkService.list(channel)).data?.CompetencyFramework ?? [],
+    enabled: Boolean(channel),
     retry: false,
   });
-  return (query.data ?? [])
+  const options = (query.data ?? [])
     .filter((f) => Boolean(f.identifier))
     .map((f) => ({ id: f.identifier, name: f.name, status: f.status }));
+  // Until the channel is known the query is idle, which still counts as loading for the pickers.
+  return { options, isLoading: !channel || query.isLoading, isError: query.isError };
 }
 
 export function useReadCompetencyFramework() {
   return useMutation<CompetencyFrameworkDetails, FrameworkApiError, string>({
     mutationFn: async (id) => {
       const framework = (await competencyFrameworkService.read(id)).data?.framework;
-      return { ...framework, identifier: framework?.identifier ?? id };
+      if (!framework) throw new Error(`Framework ${id} not found`);
+      return framework;
     },
   });
 }
@@ -47,8 +59,9 @@ export type CreateFrameworkVars = CreateCompetencyFrameworkInput & {
   levels?: readonly FrameworkLevel[];
 };
 
-const skipDuplicate = (e: FrameworkApiError) => {
-  if (e?.errCode !== 'ERR_DUPLICATE_CODE') throw e;
+const isDuplicate = (e: unknown) => (e as FrameworkApiError)?.errCode === 'ERR_DUPLICATE_CODE';
+const skipDuplicate = (e: unknown) => {
+  if (!isDuplicate(e)) throw e;
 };
 
 /**
@@ -59,9 +72,8 @@ async function attachLevel(frameworkId: string, level: FrameworkLevel): Promise<
   try {
     await competencyFrameworkService.attachCategory(frameworkId, level);
   } catch (e) {
-    const err = e as FrameworkApiError;
-    if (err?.errCode === 'ERR_DUPLICATE_CODE') return;
-    if (err?.errCode !== 'ERR_CATEGORY_NOT_FOUND') throw err;
+    if (isDuplicate(e)) return;
+    if ((e as FrameworkApiError)?.errCode !== 'ERR_CATEGORY_NOT_FOUND') throw e;
     await competencyFrameworkService.createMasterCategory(level);
     await competencyFrameworkService.attachCategory(frameworkId, level).catch(skipDuplicate);
   }
@@ -75,7 +87,8 @@ async function attachLevel(frameworkId: string, level: FrameworkLevel): Promise<
 export function useCreateCompetencyFramework() {
   return useMutation<string, FrameworkApiError, CreateFrameworkVars>({
     mutationFn: async ({ levels = SKILL_FRAMEWORK_CATEGORIES, ...input }) => {
-      const id = (await competencyFrameworkService.create(input)).data?.node_id ?? input.code;
+      const id = (await competencyFrameworkService.create(input)).data?.node_id;
+      if (!id) throw new Error('Framework create returned no identifier');
       for (const level of levels) await attachLevel(id, level);
       return id;
     },

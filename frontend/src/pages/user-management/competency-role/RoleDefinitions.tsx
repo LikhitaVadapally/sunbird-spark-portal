@@ -25,8 +25,10 @@ export function RoleDefinitions({ frameworkId }: RoleDefinitionsProps) {
   const { t } = useAppI18n();
   const { toast } = useToast();
   const { roles, isLoading, isError } = useAuthoredRoles(frameworkId);
-  // lern's role/list no longer lists the skills, so they (and their names) come from the framework.
-  const { leaves: leafSkills, vocabulary, isLoaded: leavesLoaded } = useFrameworkLeaves(frameworkId);
+  // lern's role/list carries no skills, so they (and their names) come from the framework.
+  // Editing or reactivating a role saves its skills filtered to these leaves, so both wait for
+  // them: before they load (or if the read failed) every skill would look stale and be dropped.
+  const { leaves: leafSkills, vocabulary, isLoaded: leavesLoaded, isError: leavesFailed } = useFrameworkLeaves(frameworkId);
   const retire = useRetireRole(frameworkId);
   const reactivate = useUpsertRole(frameworkId);
 
@@ -38,8 +40,9 @@ export function RoleDefinitions({ frameworkId }: RoleDefinitionsProps) {
     () => groupLeafOptions(leafSkills, vocabulary),
     [leafSkills, vocabulary]
   );
-  const shown = showRetired ? roles : roles.filter((r) => r.status === ROLE_STATUS.live);
-  const retiredCount = roles.length - roles.filter((r) => r.status === ROLE_STATUS.live).length;
+  const liveRoles = roles.filter((r) => r.status === ROLE_STATUS.live);
+  const shown = showRetired ? roles : liveRoles;
+  const retiredCount = roles.length - liveRoles.length;
   const noSkills = leavesLoaded && leafSkills.length === 0;
 
   const failed = (err: Error) =>
@@ -78,12 +81,17 @@ export function RoleDefinitions({ frameworkId }: RoleDefinitionsProps) {
             label={t('userManagement.competencyRole.roles.showRetired', { count: retiredCount })}
           />
         </div>
-        <Button onClick={() => setEditor({ open: true })} disabled={noSkills || isError} data-testid="role-new">
+        <Button onClick={() => setEditor({ open: true })} disabled={!leavesLoaded || noSkills || isError} data-testid="role-new">
           {t('userManagement.competencyRole.roles.new')}
         </Button>
       </div>
 
       {noSkills && <p className="text-sm text-sunbird-brick">{t('userManagement.competencyRole.roles.noFrameworkSkills')}</p>}
+      {leavesFailed && (
+        <p className="text-sm text-sunbird-brick" role="alert" data-testid="role-skills-error">
+          {t('userManagement.competencyRole.roles.skillsLoadFailed')}
+        </p>
+      )}
       {isError && (
         <p className="text-sm text-sunbird-brick" data-testid="role-list-error">
           {t('userManagement.competencyRole.roles.loadFailed')}
@@ -124,7 +132,7 @@ export function RoleDefinitions({ frameworkId }: RoleDefinitionsProps) {
                     </td>
                     <td className="py-2 pe-2">{role.version}</td>
                     <td className="py-2 text-end whitespace-nowrap">
-                      <Button size="sm" variant="ghost" onClick={() => setEditor({ open: true, role })} data-testid={`role-edit-${role.roleId}`}>
+                      <Button size="sm" variant="ghost" disabled={!leavesLoaded} onClick={() => setEditor({ open: true, role })} data-testid={`role-edit-${role.roleId}`}>
                         {t('userManagement.competencyRole.roles.edit')}
                       </Button>
                       {live ? (
@@ -132,7 +140,7 @@ export function RoleDefinitions({ frameworkId }: RoleDefinitionsProps) {
                           {t('userManagement.competencyRole.roles.retire')}
                         </Button>
                       ) : (
-                        <Button size="sm" variant="ghost" disabled={reactivate.isPending} onClick={() => doReactivate(role)} data-testid={`role-reactivate-${role.roleId}`}>
+                        <Button size="sm" variant="ghost" disabled={!leavesLoaded || reactivate.isPending} onClick={() => doReactivate(role)} data-testid={`role-reactivate-${role.roleId}`}>
                           {t('userManagement.competencyRole.roles.reactivate')}
                         </Button>
                       )}

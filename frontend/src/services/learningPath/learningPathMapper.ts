@@ -79,6 +79,10 @@ function mapUnitNode(node: HierarchyContentNode): LPUnitNode {
   };
 }
 
+/** Skill fields are content metadata keyed by a framework's category code, so they're read by name. */
+const fieldsOf = (node: object) => node as Record<string, unknown>;
+const list = (v: unknown): string[] => (Array.isArray(v) ? v.map(String).filter(Boolean) : []);
+
 function unionSkills(...lists: Array<string[] | undefined>): string[] {
   const set = new Set<string>();
   lists.forEach((list) => (list ?? []).forEach((s) => s && set.add(s)));
@@ -86,15 +90,8 @@ function unionSkills(...lists: Array<string[] | undefined>): string[] {
 }
 
 /**
- * Competency codes for display.
- *
- * The v2 `skills` field carries leaf CODES ("dosage-calculation"); these lists are rendered
- * straight to the learner as chips, so a raw code would surface as a slug. `skillName` with no
- * vocabulary de-slugs it to "Dosage calculation" and leaves an already-readable taxonomy label
- * untouched, which is why the taxonomy facets can pass through the same call safely.
- *
- * A proper label needs the framework, which this mapper has no access to - the competency page
- * resolves names there instead. This only has to stop the Learning Path page showing slugs.
+ * Skill tags for display. Codes ("dosage-calculation") de-slug to "Dosage calculation"; a readable
+ * taxonomy label passes through. Real names need the framework, which `withSkillNames` applies later.
  */
 function displayable(codes: string[] | undefined): string[] {
   return (codes ?? []).map((c) => skillName(undefined, c));
@@ -103,18 +100,23 @@ function displayable(codes: string[] | undefined): string[] {
 /**
  * A node's skill tags, read from `skillField`: the field its skill framework stores them in (the
  * framework's last category code - `skill` for most, `cuisine` for one whose last level is Cuisine;
- * see `frameworkSkillField`). Defaults to `skill`, so a path whose framework isn't known reads as
- * before.
+ * see `frameworkSkillField`). Defaults to `skill` when the framework isn't known.
  *
  * The field wins; its `se_` copy (`se_skills`) is only a fallback, NOT a union: `se_skills` is the
  * search-enriched copy of `skill`, so unioning listed every competency twice. The fallback stays
  * for older content carrying only `se_skills` (taxonomy labels).
  */
 export function skillSource(node: object, skillField = 'skill'): string[] {
-  const fields = node as Record<string, unknown>;
-  const list = (v: unknown): string[] => (Array.isArray(v) ? v.map(String).filter(Boolean) : []);
-  const own = list(fields[skillField]);
-  return own.length > 0 ? own : list(fields[`se_${skillField}s`]);
+  const own = list(fieldsOf(node)[skillField]);
+  return own.length > 0 ? own : list(fieldsOf(node)[`se_${skillField}s`]);
+}
+
+/**
+ * The framework a collection's skill tags belong to: its `competencyFramework`, else the taxonomy
+ * `framework` its `skill` terms come from (content authored before `competencyFramework` existed).
+ */
+export function skillFrameworkOf(root?: { competencyFramework?: string; framework?: string } | null): string | undefined {
+  return root?.competencyFramework ?? root?.framework;
 }
 
 function mapCourseNode(courseNode: HierarchyContentNode, skillField?: string): LPCourseNode {
@@ -181,7 +183,7 @@ export function parseLearningPath(
       policy: 'Fixed',
       levels: [],
       allSkills: [],
-    allSkillCodes: [],
+      allSkillCodes: [],
       courseTotal: 0,
       leafTotal: 0,
     };
@@ -216,9 +218,8 @@ export function parseLearningPath(
   );
   // Prefer the root's own tag: it is the authoritative union, written at publish. Fall back to the
   // children's codes for a path published before the root carried one.
-  // The root's own field only (no se_ fallback), as before: a taxonomy label there isn't a code.
-  const rootRaw = (root as unknown as Record<string, unknown>)[skillField ?? 'skill'];
-  const rootCodes = (Array.isArray(rootRaw) ? rootRaw.map(String) : []).filter(Boolean);
+  // The root's own field only (no se_ fallback): a taxonomy label there isn't a code.
+  const rootCodes = list(fieldsOf(root)[skillField ?? 'skill']);
   const allSkillCodes = rootCodes.length
     ? [...new Set(rootCodes)]
     : [...new Set([
@@ -238,9 +239,7 @@ export function parseLearningPath(
     allSkills,
     allSkillCodes,
     targetRole: root.targetRole,
-    // `framework` is the taxonomy framework the content's `skill` terms come from; it stands in
-    // for paths authored before `competencyFramework` existed, so their names still resolve.
-    competencyFramework: root.competencyFramework ?? root.framework,
+    competencyFramework: skillFrameworkOf(root),
     courseTotal,
     leafTotal: root.leafNodesCount ?? getLeafContentIdsFromHierarchy(root).length,
   };

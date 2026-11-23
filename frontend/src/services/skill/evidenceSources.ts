@@ -26,8 +26,8 @@ export function indexPathNodes(root: HierarchyContentNode, path: SkillPathRef): 
 
 /**
  * Names each evidence row's source and the path it was earned in, from `sources` (source id ->
- * source). The path a skill was earned in is dropped from the entry's paths, so "also taught in"
- * lists only the others.
+ * source). `paths` is left whole - counts such as "most reinforced" need every path that teaches
+ * the skill; `alsoTaughtIn` drops the earned-in one for display.
  */
 export function withEvidenceSources(
   entries: MySkillEntry[],
@@ -44,7 +44,12 @@ export function withEvidenceSources(
         ...(source.path ? { sourcePath: source.path } : {}),
       };
     });
-    const earnedIn = new Set(evidence.map((e) => e.sourcePath?.pathId).filter(Boolean));
-    return { ...entry, evidence, paths: entry.paths.filter((p) => !earnedIn.has(p.pathId)) };
+    return { ...entry, evidence };
   });
+}
+
+/** The enrolled paths that teach a gained skill, other than the one(s) it was earned in. */
+export function alsoTaughtIn(entry: MySkillEntry): SkillPathRef[] {
+  const earnedIn = new Set(entry.evidence.map((e) => e.sourcePath?.pathId).filter(Boolean));
+  return entry.paths.filter((p) => !earnedIn.has(p.pathId));
 }

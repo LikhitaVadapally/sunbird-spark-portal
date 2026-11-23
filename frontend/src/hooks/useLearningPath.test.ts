@@ -27,8 +27,9 @@ let mockIsAuthenticated = true;
 vi.mock('./useSkillProfile', () => ({
   useSkillLabels: () => ({ labelOf: (code: string) => ({ name: code, resolved: false }), codeOf: (t: string) => t, isLoading: false }),
 }));
+let mockFieldLoading = false;
 vi.mock('./useSkillFields', () => ({
-  useSkillFields: () => ({ fieldOf: () => undefined, isLoading: false }),
+  useSkillFields: () => ({ fieldOf: () => undefined, isLoading: mockFieldLoading }),
 }));
 
 vi.mock('./useCollection', () => ({
@@ -196,5 +197,16 @@ describe('useLearningPath', () => {
 
     const { result } = renderHook(() => useLearningPath(undefined, undefined));
     expect(result.current.model.levels).toEqual([]);
+  });
+
+  it('stays loading until the skill framework says which field holds the skills', () => {
+    // Parsed under the default `skill` field first, a `cuisine` path would flash zero skills.
+    mockUseCollectionData = mockCollectionData;
+    mockFieldLoading = true;
+    const { result, rerender } = renderHook(() => useLearningPath(LP_HIERARCHY_NO_ASSESSMENTS.identifier, undefined));
+    expect(result.current.isLoading).toBe(true);
+    mockFieldLoading = false;
+    rerender();
+    expect(result.current.isLoading).toBe(false);
   });
 });

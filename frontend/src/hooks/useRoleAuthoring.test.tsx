@@ -51,7 +51,7 @@ describe('role writes', () => {
     expect(result.current.data).toEqual(diff);
     expect(skillService.roleUpsert).toHaveBeenCalledWith({ roleId: 'r', name: 'R', skills: ['a'], frameworkId: 'fw' });
     expect(spy).toHaveBeenCalledWith({ queryKey: ['authoredRoles', 'fw'] });
-    expect(spy).toHaveBeenCalledWith({ queryKey: ['competencyFrameworkV2', 'fw'] });
+    expect(spy).toHaveBeenCalledWith({ queryKey: ['competencyRoles', 'fw'] });
   });
 
   it('retire sends the role and refreshes', async () => {

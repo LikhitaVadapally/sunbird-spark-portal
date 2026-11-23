@@ -9,7 +9,7 @@ export interface RoleCard {
   gap: RoleGap;
   /** Authored display name; the code when the framework names no such role. */
   name: string;
-  /** Still measured, but no longer offered: `framework/read` names it yet lists it under no live role. */
+  /** Still measured, but no longer offered: `role/list` names it yet lists it under no live role. */
   retired: boolean;
 }
 
@@ -30,7 +30,7 @@ export function pickRoleFramework(gapFrameworkId: string, held: HeldSkill[]): st
 }
 
 /**
- * `framework/read` lists only live roles under `roles` but names retired ones too, so a code with a
+ * `role/list` lists only live roles under `roles` but names retired ones too, so a code with a
  * name and no live entry is retired. Without the meta nothing can be told, so nothing is flagged.
  */
 function isRetired(code: string, meta: CompetencyFrameworkMeta | undefined): boolean {

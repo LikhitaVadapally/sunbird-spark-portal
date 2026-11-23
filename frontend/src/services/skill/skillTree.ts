@@ -1,5 +1,3 @@
-import type { HeldSkill } from '../../types/skillServiceTypes';
-
 /** A term in the nested `competency` category of a taxonomy framework read. */
 export interface TreeTermWire {
   code?: string;
@@ -89,8 +87,7 @@ export function buildSkillVocabulary(
 ): SkillVocabulary {
   const labels: Record<string, string> = {};
   const leaves: Record<string, LeafSkill> = {};
-  // null marks a name two codes share: ambiguous, so it resolves to neither.
-  const names: Record<string, string | null> = {};
+  const named: Array<[string, string]> = [];
   const categories = frameworkCategories(body);
 
   categories.forEach((category) => {
@@ -103,10 +100,7 @@ export function buildSkillVocabulary(
     if (!code || seen.has(code)) return;
     const name = term.name ?? code;
     labels[code] = name;
-    if (isSkill && term.name) {
-      const key = term.name.trim().toLowerCase();
-      names[key] = names[key] === undefined || names[key] === code ? code : null;
-    }
+    if (isSkill && term.name) named.push([term.name, code]);
 
     const children = term.children ?? [];
     if (children.length === 0) {
@@ -120,57 +114,24 @@ export function buildSkillVocabulary(
     children.forEach((child) => collect(child, nextAncestors, nextSeen, isSkill));
   }
 
+  return { frameworkId, labels, leaves, codeByName: buildCodeByName(named) };
+}
+
+/**
+ * Lower-cased skill name -> code, for content tagged by name (USF). A name two codes share is
+ * ambiguous, so it maps to neither.
+ */
+export function buildCodeByName(named: Iterable<[name: string, code: string]>): Record<string, string> {
+  const names: Record<string, string | null> = {};
+  for (const [name, code] of named) {
+    const key = name.trim().toLowerCase();
+    names[key] = names[key] === undefined || names[key] === code ? code : null;
+  }
   const codeByName: Record<string, string> = {};
   Object.entries(names).forEach(([key, code]) => {
     if (code) codeByName[key] = code;
   });
-  return { frameworkId, labels, leaves, codeByName };
-}
-
-export interface TierGroup {
-  /** Ancestor code at the grouping depth, or '' for skills the tree does not place. */
-  tierCode: string;
-  tierName: string;
-  skills: HeldSkill[];
-}
-
-/**
- * Groups held skills by an ancestor tier.
- *
- * `depth` selects which tier heads each group - 0 is the outermost, which `tierLabels[0]`
- * names. A skill whose branch is shallower than `depth`, or which the framework does not
- * place at all, falls into a trailing unclassified group rather than being dropped: the
- * learner earned it either way, and a retagged framework should not make it vanish.
- */
-export function groupSkillsByTier(
-  skills: HeldSkill[],
-  vocabulary: SkillVocabulary | undefined,
-  depth = 0
-): TierGroup[] {
-  const byTier = new Map<string, HeldSkill[]>();
-  skills.forEach((skill) => {
-    const tier = vocabulary?.leaves[skill.skillId]?.path[depth];
-    const key = tier?.code ?? '';
-    const bucket = byTier.get(key);
-    if (bucket) bucket.push(skill);
-    else byTier.set(key, [skill]);
-  });
-
-  const nameOf = (code: string) => vocabulary?.labels[code] ?? code;
-
-  return Array.from(byTier.entries())
-    .map(([tierCode, groupSkills]) => ({
-      tierCode,
-      tierName: tierCode ? nameOf(tierCode) : '',
-      skills: [...groupSkills].sort((a, b) =>
-        skillName(vocabulary, a.skillId).localeCompare(skillName(vocabulary, b.skillId))
-      ),
-    }))
-    .sort((a, b) => {
-      if (!a.tierCode) return 1; // unclassified last
-      if (!b.tierCode) return -1;
-      return a.tierName.localeCompare(b.tierName);
-    });
+  return codeByName;
 }
 
 /**
@@ -195,7 +156,7 @@ export interface SkillLabel {
 }
 
 /** The name of a leaf's immediate parent term - the small group label on a skill card. */
-export function skillGroupName(vocabulary: SkillVocabulary | undefined, code: string): string | undefined {
+function skillGroupName(vocabulary: SkillVocabulary | undefined, code: string): string | undefined {
   const path = vocabulary?.leaves[code]?.path;
   return path && path.length > 0 ? path[path.length - 1]?.name : undefined;
 }
@@ -219,9 +180,4 @@ export function resolveSkillLabel(
   if (!vocab) return { name: skillName(undefined, code), resolved: false };
   const group = skillGroupName(vocab, code);
   return { name: skillName(vocab, code), ...(group ? { group } : {}), resolved: true };
-}
-
-/** True when at least one skill resolved to a tier, i.e. grouping is meaningful. */
-export function isGrouped(groups: TierGroup[]): boolean {
-  return groups.some((g) => g.tierCode !== '');
 }

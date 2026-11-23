@@ -41,8 +41,6 @@ const LearningPathPage = () => {
   // Computed once for the whole page so the overview card and every level card agree, and the
   // profile is fetched once rather than per level.
   const pathSkills = usePathSkills(model, lp.summaryByCollectionId, pathSummary);
-  // Resolved names where the path carries codes; older paths only have display labels.
-  const scopedSkillNames = model.allSkillCodes.length > 0 ? model.allSkillCodes.map(pathSkills.name) : model.allSkills;
 
   // Durable local scores (survive the `['viewerSummary']` refetch that wipes
   // `pathSummary.assessmentStatus`) - merged with the path record below via
@@ -109,7 +107,7 @@ const LearningPathPage = () => {
           variant="prior"
           assessment={model.priorAssessment}
           policy={policy}
-          allSkills={scopedSkillNames}
+          allSkills={model.allSkills}
           bestScore={getPriorScore()}
           onStart={() => openCourse(model.priorAssessment!.identifier, model.priorAssessment!.leafIds[0] ?? '')}
           onSkip={goOverview}
@@ -131,7 +129,7 @@ const LearningPathPage = () => {
         <AssessmentGate
           variant="outcome"
           assessment={model.outcomeAssessment}
-          allSkills={scopedSkillNames}
+          allSkills={model.allSkills}
           bestScore={getOutcomeScore()}
           onStart={() => openCourse(model.outcomeAssessment!.identifier, model.outcomeAssessment!.leafIds[0] ?? '')}
           onBack={goOverview}
@@ -178,8 +176,9 @@ const LearningPathPage = () => {
   }
 
   if (levelId) {
-    const idx = model.levels.findIndex((l) => l.identifier === levelId);
-    const level = model.levels[idx];
+    // Skill states come from the code-converted model, so name-tagged (USF) paths match too.
+    const idx = pathSkills.model.levels.findIndex((l) => l.identifier === levelId);
+    const level = pathSkills.model.levels[idx];
     if (level) {
       return (
         <div className="flex-1 min-w-0 mx-auto max-w-[85rem] px-6 py-7">

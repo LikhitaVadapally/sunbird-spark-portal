@@ -2,7 +2,9 @@ import { Link, useLocation } from 'react-router-dom';
 import { FiCheck, FiChevronDown, FiLock } from 'react-icons/fi';
 import { useAppI18n } from '@/hooks/useAppI18n';
 import { getLearningPathStatusPath } from '@/utils/getContentDetailPath';
+import { formatShortDate } from '@/utils/dateUtils';
 import { toSourceKind } from '@/services/skill/mySkills';
+import { alsoTaughtIn } from '@/services/skill/evidenceSources';
 import type { MySkillEntry, SkillPathRef, SkillSourceKind } from '@/services/skill/mySkills';
 import type { SkillLabel } from '@/services/skill';
 import type { SkillEvidence } from '@/types/skillServiceTypes';
@@ -14,10 +16,6 @@ interface SkillCardProps {
   onToggle: () => void;
 }
 
-function formatSkillDate(ms: number | undefined): string {
-  if (!ms) return '';
-  return new Date(ms).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' });
-}
 
 /**
  * What to call an evidence source. A content id means nothing to a learner, so an unnamed one is
@@ -35,11 +33,15 @@ function evidenceName(ev: SkillEvidence): string | undefined {
  * and date, so a row repeats them only where they differ - which happens when several pieces of
  * evidence back one skill. A row with nothing else to show keeps its kind.
  */
-function evidenceRow(ev: SkillEvidence, entry: MySkillEntry): { kind?: SkillSourceKind; name?: string; date?: string } {
+function evidenceRow(
+  ev: SkillEvidence,
+  entry: MySkillEntry,
+  locale: string,
+): { kind?: SkillSourceKind; name?: string; date?: string } {
   const kind = toSourceKind(ev.sourceType);
   const name = evidenceName(ev);
-  const date = formatSkillDate(ev.occurredOn);
-  const showDate = Boolean(date) && date !== formatSkillDate(entry.gainedAt);
+  const date = formatShortDate(ev.occurredOn, locale);
+  const showDate = Boolean(date) && date !== formatShortDate(entry.gainedAt, locale);
   const showKind = kind !== entry.source || (!name && !showDate && !ev.sourcePath);
   return { ...(showKind ? { kind } : {}), ...(name ? { name } : {}), ...(showDate ? { date } : {}) };
 }
@@ -71,7 +73,7 @@ function PathLinks({ heading, paths }: { heading: string; paths: SkillPathRef[] 
  * proved it ("how I earned this") or which enrolled paths still teach it.
  */
 export function SkillCard({ entry, label, isExpanded, onToggle }: SkillCardProps) {
-  const { t } = useAppI18n();
+  const { t, currentCode } = useAppI18n();
   const location = useLocation();
   const { gained, source, gainedAt, evidence, paths } = entry;
   const sourceLabel = (kind: string) => t(`mySkills.source.${kind}`);
@@ -118,7 +120,7 @@ export function SkillCard({ entry, label, isExpanded, onToggle }: SkillCardProps
             {gained && gainedAt !== undefined && (
               <>
                 <Dot />
-                <span className="text-xs text-sunbird-gray-75">{formatSkillDate(gainedAt)}</span>
+                <span className="text-xs text-sunbird-gray-75">{formatShortDate(gainedAt, currentCode)}</span>
               </>
             )}
             {!gained && (
@@ -147,7 +149,7 @@ export function SkillCard({ entry, label, isExpanded, onToggle }: SkillCardProps
                 ) : (
                   <ul className="flex flex-col gap-1.5">
                     {evidence.map((ev) => {
-                      const row = evidenceRow(ev, entry);
+                      const row = evidenceRow(ev, entry, currentCode);
                       return (
                         <li key={ev.evidenceId} className="flex flex-col gap-0.5 text-xs">
                           <div className="flex flex-wrap items-center gap-x-2">
@@ -178,7 +180,7 @@ export function SkillCard({ entry, label, isExpanded, onToggle }: SkillCardProps
                   </ul>
                 )}
               </div>
-              <PathLinks heading={t('mySkills.alsoTaughtIn')} paths={paths} />
+              <PathLinks heading={t('mySkills.alsoTaughtIn')} paths={alsoTaughtIn(entry)} />
             </>
           ) : (
             <PathLinks heading={t('mySkills.stillToDoIn')} paths={paths} />

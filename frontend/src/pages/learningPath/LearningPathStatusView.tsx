@@ -103,7 +103,7 @@ export function LearningPathStatusView({ lp, pathLink, pathSkills }: LearningPat
             </p>
           ) : (
             <StatusTimeline
-              levels={model.levels}
+              levels={pathSkills.model.levels}
               attainedLevels={attainedLevels}
               levelProgress={levelProgress}
               gainedSkills={pathSkills.heldCodes}

@@ -672,13 +672,6 @@
       "questionSet": "Question Set"
     },
     "noAccessToCreate": "You do not have access to create this content",
-    "collectionDescriptions": {
-      "course": "Enter description for Course",
-      "contentPlaylist": "Enter description for Collection",
-      "digitalTextbook": "Enter description for Digital Textbook",
-      "questionPaper": "Enter description for Question Paper",
-      "learningPath": "Enter description for Learning Path"
-    },
     "errors": {
       "unexpectedResponse": "Unexpected server response. Please try again.",
       "creationFailed": "Creation Failed",
@@ -1326,7 +1319,8 @@
         "retired": "Retired {{name}}",
         "reactivated": "Reactivated {{name}}",
         "retireTitle": "Retire {{name}}?",
-        "retireBody": "Learners who already have this role keep it, but it can no longer be assigned or chosen as a target. You can reactivate it later."
+        "retireBody": "Learners who already have this role keep it, but it can no longer be assigned or chosen as a target. You can reactivate it later.",
+        "skillsLoadFailed": "Could not load this framework's skills, so roles can't be edited or reactivated. Refresh the page to try again."
       }
     },
     "skillFramework": {
@@ -1339,7 +1333,6 @@
       "chooseFramework": "Choose a framework",
       "noFrameworks": "No frameworks yet. Create one to get started.",
       "noCategories": "This framework has no levels (categories), so every row of an upload will be rejected. Create a new framework from this page instead; new frameworks get their levels automatically.",
-      "load": "Open framework",
       "loading": "Opening…",
       "name": "Name",
       "code": "Code",
@@ -1426,6 +1419,14 @@
           "duplicate": "Each level needs its own code."
         },
         "codeHeader": "Code (used in the CSV's Category column)"
+      },
+      "loadingFrameworks": "Loading frameworks…",
+      "frameworksLoadFailed": "Could not load the frameworks. Refresh the page to try again.",
+      "statusLabel": {
+        "Draft": "Draft",
+        "Review": "In review",
+        "Processing": "Processing",
+        "Live": "Live"
       }
     }
   },
@@ -1793,7 +1794,6 @@
     "currentRoleUnset": "Not set — assigned by your organisation",
     "targetRole": "Target role",
     "targetRoleUnset": "Choose a target role to see how ready you are",
-    "chooseTarget": "Aiming at",
     "metOf": "{{met}} of {{required}} skills",
     "alreadyHave": "You have",
     "stillNeeded": "Still needed",

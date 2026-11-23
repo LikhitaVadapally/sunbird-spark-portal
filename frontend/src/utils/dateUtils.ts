@@ -29,3 +29,14 @@ export function formatDayMonthYear(isoDate: string | undefined): string {
   const year = d.getFullYear();
   return `${day}/${month}/${year}`;
 }
+
+/**
+ * A timestamp as "02 Nov 2026" in `locale` (the app language), so a date reads in the same
+ * language as the page around it. Returns '' for a missing or invalid timestamp.
+ */
+export function formatShortDate(ms: number | undefined, locale?: string): string {
+  if (!ms) return '';
+  const d = new Date(ms);
+  if (Number.isNaN(d.getTime())) return '';
+  return d.toLocaleDateString(locale, { day: '2-digit', month: 'short', year: 'numeric' });
+}

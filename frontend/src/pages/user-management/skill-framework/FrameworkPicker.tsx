@@ -23,14 +23,14 @@ interface FrameworkPickerProps {
 const CODE_PATTERN = /^[A-Za-z0-9_-]+$/;
 
 /** The framework code a name suggests: "Nursing Skills" -> nursing_skills. */
-export const frameworkCodeFromName = (name: string): string =>
+const frameworkCodeFromName = (name: string): string =>
   name.trim().toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_-]/g, '');
 const inputClass = 'rounded-lg border border-sunbird-gray-e5 bg-surface px-3 py-2';
 
 /** Step 1: pick an existing competency framework, or create a new one. */
 export function FrameworkPicker({ channel, orgName, onSelected }: FrameworkPickerProps) {
   const { t } = useAppI18n();
-  const options = useCompetencyFrameworkOptions(channel);
+  const { options, isLoading: optionsLoading, isError: optionsFailed } = useCompetencyFrameworkOptions(channel);
   const read = useReadCompetencyFramework();
   const create = useCreateCompetencyFramework();
   const [mode, setMode] = useState<'existing' | 'new'>('existing');
@@ -66,7 +66,11 @@ export function FrameworkPicker({ channel, orgName, onSelected }: FrameworkPicke
       {mode === 'existing' ? (
         <div className="flex flex-col gap-1 text-sm">
           <span id="skill-framework-id-label">{t('userManagement.skillFramework.frameworkId')}</span>
-          {options.length === 0 ? (
+          {optionsLoading ? (
+            <p className="text-sunbird-gray-75" data-testid="skill-framework-options-loading">{t('userManagement.skillFramework.loadingFrameworks')}</p>
+          ) : optionsFailed ? (
+            <p className="text-sunbird-brick" role="alert" data-testid="skill-framework-options-error">{t('userManagement.skillFramework.frameworksLoadFailed')}</p>
+          ) : options.length === 0 ? (
             <p className="text-sunbird-gray-75" data-testid="skill-framework-none">{t('userManagement.skillFramework.noFrameworks')}</p>
           ) : (
             <FrameworkSelect

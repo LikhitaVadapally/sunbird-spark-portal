@@ -6,7 +6,7 @@ import { getClient, ApiResponse } from '../lib/http-client';
  * `FrameworkService` reaches `/framework/v1/read`. The backend additionally restricts every
  * write route here to ORG_ADMIN (see `backend/src/routes/portalProxyRoutes.ts`).
  *
- * Source of truth for the shapes below (Knowlg `feat/competency-framework`):
+ * Source of truth for the shapes below (Knowlg taxonomy service):
  *   taxonomy-service/conf/routes
  *   taxonomy-controllers/.../v3/CompetencyFrameworkController.scala + FrameworkControllerBase.scala
  *   taxonomy-controllers/.../v3/FrameworkTermController.scala
@@ -22,9 +22,8 @@ import { getClient, ApiResponse } from '../lib/http-client';
  *   POST  /framework/v3/term/validate                  multipart: framework + file (dry run)
  *   POST  /framework/v3/term/commit                    multipart: framework + file (writes)
  *
- * Not wired: PATCH /competency-framework/v3/update/:id and the review/reject transitions.
- * Publish works straight from Draft, so the review step is left out until a reviewer flow is
- * designed; add `review`/`reject` here when it is.
+ * The backend also guards update, review, reject and retire so they can't fall through to its
+ * catch-all proxy; this client doesn't call them, since publish works straight from Draft.
  */
 const COMPETENCY_FRAMEWORK = '/competency-framework/v3';
 const FRAMEWORK = '/framework/v3';
@@ -50,8 +49,16 @@ export const SKILL_FRAMEWORK_CATEGORIES: readonly FrameworkLevel[] = [
   { code: 'skill', name: 'Skill' },
 ];
 
+/** Knowlg object statuses a competency framework moves through. */
+export const FRAMEWORK_STATUS = {
+  draft: 'Draft',
+  review: 'Review',
+  processing: 'Processing',
+  live: 'Live',
+} as const;
+
 /** Statuses during which Knowlg rejects term validate/commit (FrameworkManager.assertFrameworkEditable). */
-export const FRAMEWORK_EDIT_BLOCKED_STATUSES = ['Review', 'Processing'];
+export const FRAMEWORK_EDIT_BLOCKED_STATUSES: readonly string[] = [FRAMEWORK_STATUS.review, FRAMEWORK_STATUS.processing];
 
 export interface CompetencyFrameworkDetails {
   identifier: string;
@@ -174,16 +181,15 @@ export class CompetencyFrameworkService {
   /**
    * Lists competency frameworks via composite search (not `/framework/v3/list`, per Knowlg).
    * Drafts are included so a newly created framework can still be opened and published.
-   * Scoped to the admin's channel when known, so other tenants' and stray test frameworks
-   * don't crowd the picker.
+   * Always scoped to the admin's channel, so other tenants' frameworks are never offered.
    */
-  public list(channel?: string): Promise<ApiResponse<{ count?: number; CompetencyFramework?: CompetencyFrameworkDetails[] }>> {
+  public list(channel: string): Promise<ApiResponse<{ count?: number; CompetencyFramework?: CompetencyFrameworkDetails[] }>> {
     return getClient().post('/composite/v1/search', {
       request: {
         filters: {
           objectType: ['CompetencyFramework'],
-          status: ['Draft', 'Live'],
-          ...(channel ? { channel: [channel] } : {}),
+          status: [FRAMEWORK_STATUS.draft, FRAMEWORK_STATUS.live],
+          channel: [channel],
         },
         fields: ['identifier', 'name', 'status', 'channel'],
         limit: 100,

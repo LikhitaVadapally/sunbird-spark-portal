@@ -1,6 +1,6 @@
 import { useCallback, useMemo } from 'react';
 import { useSkillFrameworks, useSkillLabels, useSkillProfile } from './useSkillProfile';
-import { getFinishedCourseIds } from '@/services/learningPath/skillAggregation';
+import { derivePathSkillCodes, getFinishedCourseIds } from '@/services/learningPath/skillAggregation';
 import {
   computePathSkills,
   computeRoleReadiness,
@@ -14,6 +14,11 @@ import type { LearningPathModel } from '@/types/learningPathTypes';
 import type { ViewerSummaryRecord } from '@/types/viewerServiceTypes';
 
 export interface UsePathSkillsResult {
+  /**
+   * The path with every skill tag turned into a code. Render skill states from this model, not the
+   * raw one: a path tagged by skill name (USF) would otherwise never match the held codes.
+   */
+  model: LearningPathModel;
   summary: PathSkillSummary | undefined;
   /** Codes held from any source - the same "gained" set My Skills uses. */
   heldCodes: ReadonlySet<string>;
@@ -22,8 +27,8 @@ export interface UsePathSkillsResult {
   /** Display name for a leaf code, from the framework; de-slugs when no framework knows it. */
   name: (code: string) => string;
   /**
-   * Readiness for the role this path is built for. Undefined until the path declares a
-   * `targetRole` AND the framework maps skills to it - so it stays hidden while roles are deferred.
+   * Readiness for the role this path is built for. Undefined unless the path declares a
+   * `targetRole` AND that role requires at least one skill.
    */
   role?: { code: string; name: string } & RoleReadiness;
   isLoading: boolean;
@@ -34,9 +39,8 @@ export interface UsePathSkillsResult {
  * gained = in the skill profile (any source, any framework - codes are the key), pending = still
  * on a course here the learner has not finished.
  *
- * Not scoped to the path's framework any more. A skill earned from a standalone course or an
- * external certificate is held all the same, and filtering by framework made this page disagree
- * with My Skills. The framework is used for names only.
+ * Not scoped to the path's framework: a skill earned from a standalone course or an external
+ * certificate is held all the same, and My Skills counts it. The framework is used for names only.
  */
 export function usePathSkills(
   rawModel: LearningPathModel,
@@ -72,13 +76,16 @@ export function usePathSkills(
   const { metas, isLoading: roleLoading } = useSkillFrameworks(roleFrameworkIds);
   const meta = model.competencyFramework ? metas[model.competencyFramework] : undefined;
 
+  // Everything the path teaches - root, Levels and courses - not just the root tag.
+  const taughtCodes = useMemo(() => derivePathSkillCodes(model, finishedCourseIds).taughtCodes, [model, finishedCourseIds]);
+
   const role = useMemo(() => {
     const code = model.targetRole;
-    const readiness = code ? computeRoleReadiness(meta?.roles?.[code], heldCodes, model.allSkillCodes) : undefined;
+    const readiness = code ? computeRoleReadiness(meta?.roles?.[code], heldCodes, taughtCodes) : undefined;
     if (!code || !readiness) return undefined;
     // The authored name wins; de-slug only for a role with no name on record.
     return { code, name: meta?.roleNames?.[code] ?? labelOf(code, model.competencyFramework).name, ...readiness };
-  }, [model.targetRole, model.allSkillCodes, model.competencyFramework, meta, heldCodes, labelOf]);
+  }, [model.targetRole, taughtCodes, model.competencyFramework, meta, heldCodes, labelOf]);
 
   const stateOf = useCallback((code: string) => summary?.skills.find((s) => s.code === code), [summary]);
   const name = useCallback(
@@ -86,5 +93,5 @@ export function usePathSkills(
     [labelOf, model.competencyFramework]
   );
 
-  return { summary, heldCodes, stateOf, name, role, isLoading: profileLoading || labelsLoading || roleLoading };
+  return { model, summary, heldCodes, stateOf, name, role, isLoading: profileLoading || labelsLoading || roleLoading };
 }

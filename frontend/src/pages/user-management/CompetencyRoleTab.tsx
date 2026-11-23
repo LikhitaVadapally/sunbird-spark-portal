@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useAppI18n } from '@/hooks/useAppI18n';
 import { useCompetencyFrameworkOptions } from '@/hooks/useCompetencyFrameworkAdmin';
+import { FRAMEWORK_STATUS } from '@/services/CompetencyFrameworkService';
 import { FrameworkSelect } from './skill-framework/FrameworkSelect';
 import { RoleDefinitions } from './competency-role/RoleDefinitions';
 import { AssignRoleForm } from './competency-role/AssignRoleForm';
@@ -22,8 +23,8 @@ export function CompetencyRoleTab({ channel, frameworkId: framework, onFramework
   const { t } = useAppI18n();
   // An org can have several frameworks. Roles are built from a framework's published skills,
   // so a Draft one is listed but can't be picked yet.
-  const options = useCompetencyFrameworkOptions(channel);
-  const live = options.filter((o) => o.status === 'Live');
+  const { options } = useCompetencyFrameworkOptions(channel);
+  const live = options.filter((o) => o.status === FRAMEWORK_STATUS.live);
   const onlyLiveId = live.length === 1 ? live[0]?.id : undefined;
 
   useEffect(() => {
@@ -41,7 +42,7 @@ export function CompetencyRoleTab({ channel, frameworkId: framework, onFramework
           placeholder={t('userManagement.competencyRole.chooseFramework')}
           labelledBy="competency-role-framework-label"
           testId="competency-role-framework"
-          disabledReason={(o) => (o.status === 'Live' ? undefined : t('userManagement.competencyRole.publishFirst'))}
+          disabledReason={(o) => (o.status === FRAMEWORK_STATUS.live ? undefined : t('userManagement.competencyRole.publishFirst'))}
         />
       </div>
 

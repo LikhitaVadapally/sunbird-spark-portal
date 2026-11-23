@@ -34,10 +34,10 @@ describe('CompetencyFrameworkService', () => {
   });
 
   it('lists draft and live competency frameworks via composite search', async () => {
-    await service.list();
+    await service.list('ch1');
     expect(mockClient.post).toHaveBeenCalledWith('/composite/v1/search', {
       request: expect.objectContaining({
-        filters: { objectType: ['CompetencyFramework'], status: ['Draft', 'Live'] },
+        filters: { objectType: ['CompetencyFramework'], status: ['Draft', 'Live'], channel: ['ch1'] },
         sort_by: { lastUpdatedOn: 'desc' },
       }),
     });

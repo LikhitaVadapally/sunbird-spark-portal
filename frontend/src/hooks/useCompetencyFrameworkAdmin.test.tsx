@@ -63,11 +63,12 @@ describe('useCommitTermSheet', () => {
 });
 
 describe('useCompetencyFrameworkOptions', () => {
-  it('returns an empty list when the search fails', async () => {
+  it('reports a failed search as an error, not as "no frameworks"', async () => {
     vi.mocked(competencyFrameworkService.list).mockRejectedValue(new Error('down'));
     const { result } = renderHook(() => useCompetencyFrameworkOptions('ch1'), { wrapper });
-    await waitFor(() => expect(competencyFrameworkService.list).toHaveBeenCalledWith('ch1'));
-    expect(result.current).toEqual([]);
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(result.current.options).toEqual([]);
+    expect(result.current.isLoading).toBe(false);
   });
 
   it('maps listed frameworks to id, name and status', async () => {
@@ -75,7 +76,15 @@ describe('useCompetencyFrameworkOptions', () => {
       data: { CompetencyFramework: [{ identifier: 'fw_a', name: 'Agri', status: 'Live' }, { identifier: 'fw_b' }] }, status: 200, headers: {},
     });
     const { result } = renderHook(() => useCompetencyFrameworkOptions('ch1'), { wrapper });
-    await waitFor(() => expect(result.current).toEqual([{ id: 'fw_a', name: 'Agri', status: 'Live' }, { id: 'fw_b', name: undefined, status: undefined }]));
+    await waitFor(() => expect(result.current.options).toEqual([{ id: 'fw_a', name: 'Agri', status: 'Live' }, { id: 'fw_b', name: undefined, status: undefined }]));
+    expect(result.current.isLoading).toBe(false);
+  });
+
+  // Without a channel the search would return every tenant's frameworks.
+  it('does not search until the channel is known, and reports loading meanwhile', () => {
+    const { result } = renderHook(() => useCompetencyFrameworkOptions(''), { wrapper });
+    expect(competencyFrameworkService.list).not.toHaveBeenCalled();
+    expect(result.current).toEqual({ options: [], isLoading: true, isError: false });
   });
 });
 

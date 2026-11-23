@@ -28,7 +28,8 @@ vi.mock('@/components/common/Select', () => ({
   ),
 }));
 
-const setOptions = (options: FrameworkOption[]) => vi.mocked(useCompetencyFrameworkOptions).mockReturnValue(options);
+const setOptions = (options: FrameworkOption[], over: { isLoading?: boolean; isError?: boolean } = {}) =>
+  vi.mocked(useCompetencyFrameworkOptions).mockReturnValue({ options, isLoading: false, isError: false, ...over });
 
 // The page owns the chosen framework; this mirrors it.
 function Harness({ initial = '' }: { initial?: string }) {

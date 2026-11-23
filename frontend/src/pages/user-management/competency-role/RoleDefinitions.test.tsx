@@ -28,8 +28,8 @@ const upsertMutate = vi.fn();
 const setRoles = (over: Partial<ReturnType<typeof useAuthoredRoles>> = {}) =>
   vi.mocked(useAuthoredRoles).mockReturnValue({ roles: [live, retired], isLoading: false, isError: false, ...over });
 // Skills come from the framework itself (lern's role/list no longer lists them).
-const setLeaves = (leaves: string[], isLoaded = true) =>
-  vi.mocked(useFrameworkLeaves).mockReturnValue({ leaves, vocabulary: undefined, isLoaded });
+const setLeaves = (leaves: string[], isLoaded = true, isError = false) =>
+  vi.mocked(useFrameworkLeaves).mockReturnValue({ leaves, vocabulary: undefined, isLoaded, isLoading: !isLoaded && !isError, isError } as ReturnType<typeof useFrameworkLeaves>);
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -108,5 +108,23 @@ describe('RoleDefinitions', () => {
     setLeaves([], false);
     renderDefs();
     expect(screen.queryByText('userManagement.competencyRole.roles.noFrameworkSkills')).not.toBeInTheDocument();
+  });
+  it('keeps Edit and Reactivate disabled until the framework skills load, so a save cannot drop them', () => {
+    setLeaves([], false);
+    renderDefs();
+    fireEvent.click(screen.getByRole('switch'));
+    expect(screen.getByTestId('role-edit-nurse')).toBeDisabled();
+    expect(screen.getByTestId('role-reactivate-old')).toBeDisabled();
+    expect(screen.getByTestId('role-new')).toBeDisabled();
+  });
+
+  it('shows an error and keeps Edit and Reactivate disabled when the framework skills fail to load', () => {
+    setLeaves([], false, true);
+    renderDefs();
+    fireEvent.click(screen.getByRole('switch'));
+    expect(screen.getByTestId('role-skills-error')).toBeInTheDocument();
+    expect(screen.getByTestId('role-edit-nurse')).toBeDisabled();
+    fireEvent.click(screen.getByTestId('role-reactivate-old'));
+    expect(upsertMutate).not.toHaveBeenCalled();
   });
 });

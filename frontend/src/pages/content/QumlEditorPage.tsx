@@ -45,7 +45,7 @@ const QumlEditorPage = () => {
 
   const viewIntent = useEditorViewIntent();
 
-  const { editorMode, lockError, isLocking, isResolvingRole, retireLock } = useEditorLock({
+  const { editorMode, lockError, isResolvingRole, retireLock } = useEditorLock({
     contentId,
     metadata,
     viewIntent,

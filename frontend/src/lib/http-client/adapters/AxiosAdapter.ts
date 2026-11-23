@@ -1,6 +1,6 @@
 import axios, { AxiosInstance, AxiosResponse } from 'axios';
 import { BaseClient } from '../BaseClient';
-import { ApiResponse, HeaderOperation, HttpClientConfig } from '../types';
+import { ApiResponse, HeaderOperation, HttpClientConfig, HttpError } from '../types';
 import _ from 'lodash';
 
 export class AxiosAdapter extends BaseClient {
@@ -46,10 +46,7 @@ export class AxiosAdapter extends BaseClient {
           const body = error.response.data as Record<string, unknown> | undefined;
           const params = body?.params as Record<string, unknown> | undefined;
           const errmsg = typeof params?.errmsg === 'string' ? params.errmsg : error.message || `Request failed (${status})`;
-          // `errCode` and `result` carry the Sunbird envelope's params.err and result through, for
-          // APIs that answer a 4xx with a structured body the caller must render (e.g. the
-          // competency framework term validate/commit, whose rows[] explain what failed).
-          const err = new Error(errmsg) as Error & { status: number; errCode?: string; result?: unknown };
+          const err = new Error(errmsg) as HttpError;
           err.status = status;
           if (typeof params?.err === 'string') err.errCode = params.err;
           if (!_.isNil(body?.result)) err.result = body?.result;

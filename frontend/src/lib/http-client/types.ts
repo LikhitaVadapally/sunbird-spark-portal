@@ -30,3 +30,10 @@ export interface IHttpClient {
 
   updateHeaders(headers: HeaderOperation[]): void;
 }
+
+/**
+ * Error the client throws for a 4xx/5xx. `errCode` and `result` carry the Sunbird envelope's
+ * params.err and result through, for APIs that answer a 4xx with a structured body the caller
+ * must render (e.g. the competency framework term validate/commit, whose rows[] explain what failed).
+ */
+export type HttpError = Error & { status: number; errCode?: string; result?: unknown };

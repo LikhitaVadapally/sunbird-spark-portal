@@ -18,7 +18,7 @@ interface PathCompletionViewProps {
  * Completion screen: stat cards, score rows, certificate card, skills-gained chips (design's `bDone`).
  *
  * Lists only skills actually gained - finishing a path does not by itself prove every skill it
- * scopes, and listing the whole scope here contradicted My Skills.
+ * scopes, and My Skills counts only what the profile holds.
  */
 export function PathCompletionView({ pathTitle, levelCount, scores, skills, hasCertificate, onDownload }: PathCompletionViewProps) {
   const { t } = useAppI18n();

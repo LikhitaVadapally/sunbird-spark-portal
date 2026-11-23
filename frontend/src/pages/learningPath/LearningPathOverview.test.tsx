@@ -6,7 +6,8 @@ import { LearningPathOverview } from './LearningPathOverview';
 vi.mock('@/hooks/usePathSkills', () => ({
   // The overview now surfaces skill progress, which reaches the competency APIs. These tests are
   // about layout and the creator/enrol panels, so the hook is stubbed to "nothing to show".
-  usePathSkills: () => ({
+  usePathSkills: (model: unknown) => ({
+    model,
     summary: undefined,
     heldCodes: new Set(),
     stateOf: () => undefined,

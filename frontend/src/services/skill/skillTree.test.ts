@@ -1,21 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import {
   buildSkillVocabulary,
-  groupSkillsByTier,
   frameworkCategories,
   skillName,
-  isGrouped,
-  skillGroupName,
   resolveSkillLabel,
 } from './skillTree';
-import type { HeldSkill } from '../../types/skillServiceTypes';
-
-const held = (skillId: string, frameworkId = 'fw'): HeldSkill => ({
-  skillId,
-  frameworkId,
-  sourceType: 'COURSE',
-  evidence: [],
-});
 
 /** Three tiers: area -> competency -> leaf, as the health framework is authored. */
 const threeTier = {
@@ -173,56 +162,6 @@ describe('buildSkillVocabulary', () => {
   });
 });
 
-describe('groupSkillsByTier', () => {
-  const vocab = buildSkillVocabulary('fw', threeTier);
-
-  it('groups by the outermost tier, alphabetically by display name', () => {
-    const groups = groupSkillsByTier(
-      [held('patient-counselling'), held('dosage-calculation'), held('iv-administration')],
-      vocab
-    );
-    expect(groups.map((g) => g.tierCode)).toEqual(['behavioural', 'domain']);
-    expect(groups[1]?.skills.map((s) => s.skillId)).toEqual(['dosage-calculation', 'iv-administration']);
-    expect(isGrouped(groups)).toBe(true);
-  });
-
-  it('groups at a deeper tier when asked', () => {
-    const groups = groupSkillsByTier([held('dosage-calculation')], vocab, 1);
-    expect(groups[0]?.tierCode).toBe('medication-administration');
-  });
-
-  // A retagged framework should never make an earned skill vanish from the profile.
-  it('keeps a skill the framework does not place, in a trailing group', () => {
-    const groups = groupSkillsByTier([held('dosage-calculation'), held('orphan')], vocab);
-    expect(groups.map((g) => g.tierCode)).toEqual(['domain', '']);
-    expect(groups[1]?.skills[0]?.skillId).toBe('orphan');
-  });
-
-  it('reports grouped=false when nothing resolves, so the page can render flat', () => {
-    const groups = groupSkillsByTier([held('a'), held('b')], undefined);
-    expect(groups).toHaveLength(1);
-    expect(groups[0]?.tierCode).toBe('');
-    expect(isGrouped(groups)).toBe(false);
-  });
-
-  it('puts a skill shallower than the requested depth in the unclassified group', () => {
-    // 'shallow' has one ancestor, so depth 1 does not exist for it
-    const uneven = buildSkillVocabulary('fw', {
-      framework: {
-        categories: [
-          { code: 'competency', terms: [{ code: 'a', name: 'A', children: [{ code: 'shallow', name: 'S' }] }] },
-        ],
-      },
-    });
-    const groups = groupSkillsByTier([held('shallow')], uneven, 1);
-    expect(groups[0]?.tierCode).toBe('');
-  });
-
-  it('returns [] for an empty profile', () => {
-    expect(groupSkillsByTier([], vocab)).toEqual([]);
-  });
-});
-
 describe('skillName', () => {
   const vocab = buildSkillVocabulary('fw', threeTier);
 
@@ -243,16 +182,16 @@ describe('skillName', () => {
   });
 });
 
-describe('skillGroupName', () => {
+describe('resolveSkillLabel group', () => {
   const vocab = buildSkillVocabulary('fw', threeTier);
 
   it("returns the leaf's immediate parent term", () => {
-    expect(skillGroupName(vocab, 'dosage-calculation')).toBe('Medication Administration');
+    expect(resolveSkillLabel([vocab], 'dosage-calculation').group).toBe('Medication Administration');
   });
 
   it('returns undefined for a code the tree does not place', () => {
-    expect(skillGroupName(vocab, 'unknown')).toBeUndefined();
-    expect(skillGroupName(undefined, 'dosage-calculation')).toBeUndefined();
+    expect(resolveSkillLabel([vocab], 'unknown').group).toBeUndefined();
+    expect(resolveSkillLabel([], 'dosage-calculation').group).toBeUndefined();
   });
 });
 

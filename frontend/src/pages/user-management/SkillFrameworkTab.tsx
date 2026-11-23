@@ -8,6 +8,7 @@ import {
 } from '@/services/CompetencyFrameworkService';
 import { FrameworkPicker } from './skill-framework/FrameworkPicker';
 import { TermSheetWorkflow } from './skill-framework/TermSheetWorkflow';
+import { frameworkStatusLabel } from './skill-framework/frameworkStatus';
 
 interface SkillFrameworkTabProps {
   /** The admin's root-org channel; a new framework belongs to it. */
@@ -58,7 +59,7 @@ export function SkillFrameworkTab({ channel, orgName }: SkillFrameworkTabProps) 
             {framework.name ? `${framework.name} (${framework.identifier})` : framework.identifier}
           </h2>
           {status && (
-            <p className="text-xs text-sunbird-gray-75">{t('userManagement.skillFramework.status', { status })}</p>
+            <p className="text-xs text-sunbird-gray-75">{t('userManagement.skillFramework.status', { status: frameworkStatusLabel(status, t) })}</p>
           )}
         </div>
         <Button variant="outline" size="sm" onClick={() => setSelected(null)} data-testid="skill-framework-change">

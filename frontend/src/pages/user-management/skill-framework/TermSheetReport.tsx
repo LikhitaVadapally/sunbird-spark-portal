@@ -32,7 +32,7 @@ export function TermSheetReport({ counts, rows, fileWarnings = [], testId }: Ter
       </dl>
 
       {fileWarnings.length > 0 && (
-        <ul className="text-sm text-sunbird-gray-75 list-disc pl-5" data-testid={`${testId}-file-warnings`}>
+        <ul className="text-sm text-sunbird-gray-75 list-disc ps-5" data-testid={`${testId}-file-warnings`}>
           {fileWarnings.map((w, i) => <li key={`${w.code}-${i}`}>{w.msg}</li>)}
         </ul>
       )}
@@ -41,20 +41,20 @@ export function TermSheetReport({ counts, rows, fileWarnings = [], testId }: Ter
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-left text-sunbird-gray-75">
-                <th className="py-1 pr-3">{t('userManagement.skillFramework.report.row')}</th>
-                <th className="py-1 pr-3">{t('userManagement.skillFramework.report.term')}</th>
-                <th className="py-1 pr-3">{t('userManagement.skillFramework.report.action')}</th>
+              <tr className="text-start text-sunbird-gray-75">
+                <th className="py-1 pe-3">{t('userManagement.skillFramework.report.row')}</th>
+                <th className="py-1 pe-3">{t('userManagement.skillFramework.report.term')}</th>
+                <th className="py-1 pe-3">{t('userManagement.skillFramework.report.action')}</th>
                 <th className="py-1">{t('userManagement.skillFramework.report.details')}</th>
               </tr>
             </thead>
             <tbody>
               {sorted.map((row) => (
                 <tr key={row.index} className="border-t border-border align-top" data-testid={`${testId}-row`}>
-                  {/* index counts non-blank data rows from 0; +1 matches what an admin counts below the header */}
-                  <td className="py-1 pr-3">{row.index + 1}</td>
-                  <td className="py-1 pr-3 font-mono">{`${row.category}:${row.code}`}</td>
-                  <td className="py-1 pr-3">{t(`userManagement.skillFramework.report.${row.rowType === 'update' ? 'update' : 'create'}`)}</td>
+                  {/* index counts non-blank data rows from 0, so this is the data row number with blank rows skipped */}
+                  <td className="py-1 pe-3">{row.index + 1}</td>
+                  <td className="py-1 pe-3 font-mono">{`${row.category}:${row.code}`}</td>
+                  <td className="py-1 pe-3">{t(`userManagement.skillFramework.report.${row.rowType === 'update' ? 'update' : 'create'}`)}</td>
                   <td className="py-1">
                     {isFailed(row) && (
                       <p className="text-sunbird-brick">{row.errMsg || row.errCode}</p>

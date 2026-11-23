@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { useQueries } from '@tanstack/react-query';
+import { toQuerySlices } from './querySlices';
 import { useContentSearch } from './useContent';
 import { collectionHierarchyQueryOptions } from './useCollection';
 import { useSkillLabels } from './useSkillProfile';
@@ -85,6 +86,7 @@ export function useSkillSuggestions(
 
   const hierarchyQueries = useQueries({
     queries: candidates.map((item) => collectionHierarchyQueryOptions(item.identifier)),
+    combine: toQuerySlices<CollectionData | null>,
   });
 
   // Each path's skill tags live in its skill-framework field (`cuisine`, ...), not always `skill`.
@@ -92,7 +94,7 @@ export function useSkillSuggestions(
     () => hierarchyQueries.map((q) => (q?.data as CollectionData | null | undefined)?.hierarchyRoot?.competencyFramework),
     [hierarchyQueries]
   );
-  const { fieldOf } = useSkillFields(candidateFrameworkIdsRaw);
+  const { fieldOf, isLoading: fieldsLoading } = useSkillFields(candidateFrameworkIdsRaw);
   const candidateModels = useMemo(
     () =>
       hierarchyQueries.map((query) => {
@@ -145,5 +147,5 @@ export function useSkillSuggestions(
 
   const isDiscoverHierarchyLoading = candidates.length > 0 && hierarchyQueries.some((q) => q.isLoading);
 
-  return { suggestions, isLoading: isSearchLoading || isDiscoverHierarchyLoading };
+  return { suggestions, isLoading: isSearchLoading || isDiscoverHierarchyLoading || fieldsLoading };
 }

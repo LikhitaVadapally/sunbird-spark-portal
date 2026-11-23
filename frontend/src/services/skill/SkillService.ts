@@ -10,12 +10,12 @@ import type {
 } from '../../types/skillServiceTypes';
 
 /**
- * Thin client over the competency framework v2 skill APIs. Proxied through the backend
- * at `/portal/...`, which forwards to Kong, exactly like `services/viewer/ViewerService.ts`.
+ * Thin client over lern's skill and competency-role APIs. Proxied through the backend at
+ * `/portal/...`, which forwards to Kong, exactly like `services/viewer/ViewerService.ts`.
  *
  * ROUTING: Kong exposes `<SKILL>/...` and rewrites onto the service's own `/v1/skill/...`.
- * The resolved-framework read keeps the `competency` prefix because it describes the
- * framework rather than a learner.
+ * Role routes keep the `competency` prefix because they describe a framework's roles rather
+ * than a learner.
  *
  *   POST /skill/v1/profile/read
  *   POST /skill/v1/gap/read
@@ -71,7 +71,7 @@ export class SkillService {
   }
 
   /** Live roles and the skills each requires, plus every role's name. 404 when there are no roles. */
-  public frameworkRead(frameworkId: string): Promise<ApiResponse<CompetencyFrameworkResponse>> {
+  public roleList(frameworkId: string): Promise<ApiResponse<CompetencyFrameworkResponse>> {
     return getClient().get<CompetencyFrameworkResponse>(
       `${COMPETENCY}/role/list/${encodeURIComponent(frameworkId)}`
     );
@@ -93,7 +93,7 @@ export class SkillService {
 
   // ---- role authoring (admin; lern rejects non-admin tokens) --------------------------------
 
-  /** Roles as authored, RETIRED included - unlike `frameworkRead`, which serves learners. */
+  /** Roles as authored, RETIRED included - unlike `roleList`, which serves learners. */
   public roleRead(request: { frameworkId: string }): Promise<ApiResponse<RoleReadResponse>> {
     return getClient().post<RoleReadResponse>(`${COMPETENCY}/role/read`, { request });
   }

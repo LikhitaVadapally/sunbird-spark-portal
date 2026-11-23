@@ -1,7 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useAppI18n } from '@/hooks/useAppI18n';
 import useImpression from '@/hooks/useImpression';
-import { useToast } from '@/hooks/useToast';
 import { useMySkills } from '@/hooks/useMySkills';
 import { useSkillSuggestions } from '@/hooks/useSkillSuggestions';
 import PageLoader from '@/components/common/PageLoader';
@@ -28,7 +27,6 @@ const PAGE_SIZE = 24;
 
 const MySkills = () => {
   const { t } = useAppI18n();
-  const { toast } = useToast();
   useImpression({ type: 'view', pageid: 'my-skills', env: 'profile' });
 
   const {
@@ -44,15 +42,6 @@ const MySkills = () => {
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [expandedSkill, setExpandedSkill] = useState<string | null>(null);
   const [expandedPathId, setExpandedPathId] = useState<string | null>(null);
-
-  // Once per failure, not per render: the banner below stays for as long as the error does.
-  const toastedProfileError = useRef(false);
-  useEffect(() => {
-    if (profileError && !toastedProfileError.current) {
-      toast({ title: t('mySkills.profileError'), variant: 'destructive' });
-    }
-    toastedProfileError.current = profileError;
-  }, [profileError, toast, t]);
 
   const labelOfEntry = (entry: MySkillEntry) => labelOf(entry.code, entry.frameworkId);
   const nameOf = (code: string, frameworkId?: string) => labelOf(code, frameworkId).name;
@@ -158,7 +147,7 @@ const MySkills = () => {
           </aside>
 
           <div className="flex min-w-0 flex-col gap-4">
-            {!labelsLoading && <SkillSuggestionRow suggestions={suggestions} nameOf={(code) => nameOf(code)} />}
+            {!labelsLoading && <SkillSuggestionRow suggestions={suggestions} nameOf={nameOf} />}
             <MySkillsControls
               view={view}
               onViewChange={(next) => {

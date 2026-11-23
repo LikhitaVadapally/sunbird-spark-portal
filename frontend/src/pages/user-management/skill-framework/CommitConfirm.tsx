@@ -19,7 +19,7 @@ interface CommitConfirmProps {
 export function CommitConfirm({ summary, fileName, isPending, onCommit }: CommitConfirmProps) {
   const { t } = useAppI18n();
   const [acknowledged, setAcknowledged] = useState(false);
-  const retiring = summary.toRetire ?? 0;
+  const retiring = summary.toRetire;
 
   return (
     <section className="flex flex-col gap-3 rounded-lg border border-border p-4" data-testid="skill-framework-confirm">
@@ -27,8 +27,8 @@ export function CommitConfirm({ summary, fileName, isPending, onCommit }: Commit
       <p className="text-sm">
         {t('userManagement.skillFramework.confirm.changes', {
           file: fileName,
-          create: summary.toCreate ?? 0,
-          update: summary.toUpdate ?? 0,
+          create: summary.toCreate,
+          update: summary.toUpdate,
           retire: retiring,
         })}
       </p>

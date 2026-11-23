@@ -12,14 +12,7 @@ export { getAssessmentInfo, buildAssessmentInfoMap } from './learningPathAssessm
 export type { LPAssessmentInfo } from './learningPathAssessment';
 export { getAttainedLevels, SKILL_GAINING_STATUSES } from './skillAttainment';
 export { deriveWaiversFromOptionalNodes } from './levelWaivers';
-export {
-  buildPathSkillSummary,
-  courseSkillCodes,
-  derivePathSkillCodes,
-  filterPathSummaries,
-  getFinishedCourseIds,
-  splitPathSkills,
-} from './skillAggregation';
+export { buildPathSkillSummary, filterPathSummaries } from './skillAggregation';
 export type { PathSkillSummary, PathSkillStatus, SkillAggregate, PathSkillFilters } from './skillAggregation';
 export { buildSkillGrowthSeries } from './skillGrowth';
-export type { DatedSkill, SkillGrowthPoint, SkillGrowthSeries } from './skillGrowth';
+export type { SkillGrowthPoint, SkillGrowthSeries } from './skillGrowth';

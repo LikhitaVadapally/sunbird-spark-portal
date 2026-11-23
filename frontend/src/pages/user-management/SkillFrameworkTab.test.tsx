@@ -39,7 +39,7 @@ const summary = { toCreate: 12, toUpdate: 3, toUpdateLive: 1, toUpdateDraft: 2, 
 let read: Mut, create: Mut, download: Mut, validate: Mut, commit: Mut, publish: Mut;
 
 const setup = () => {
-  vi.mocked(hooks.useCompetencyFrameworkOptions).mockReturnValue([{ id: 'fw_a', name: 'Nursing', status: 'Live' }]);
+  vi.mocked(hooks.useCompetencyFrameworkOptions).mockReturnValue({ options: [{ id: 'fw_a', name: 'Nursing', status: 'Live' }], isLoading: false, isError: false });
   vi.mocked(hooks.useReadCompetencyFramework).mockReturnValue(asHook(read) as never);
   vi.mocked(hooks.useCreateCompetencyFramework).mockReturnValue(asHook(create) as never);
   vi.mocked(hooks.useDownloadTermSheet).mockReturnValue(asHook(download) as never);
@@ -203,9 +203,24 @@ describe('SkillFrameworkTab', () => {
   });
 
   it('says so when there are no frameworks to pick', () => {
-    vi.mocked(hooks.useCompetencyFrameworkOptions).mockReturnValue([]);
+    vi.mocked(hooks.useCompetencyFrameworkOptions).mockReturnValue({ options: [], isLoading: false, isError: false });
     render(<SkillFrameworkTab channel="ch1" />);
     expect(screen.getByTestId('skill-framework-none')).toBeInTheDocument();
+  });
+
+  // Showing "No frameworks yet. Create one" here would push the admin to create a duplicate.
+  it('shows loading, not "no frameworks", while the list loads', () => {
+    vi.mocked(hooks.useCompetencyFrameworkOptions).mockReturnValue({ options: [], isLoading: true, isError: false });
+    render(<SkillFrameworkTab channel="ch1" />);
+    expect(screen.getByTestId('skill-framework-options-loading')).toBeInTheDocument();
+    expect(screen.queryByTestId('skill-framework-none')).not.toBeInTheDocument();
+  });
+
+  it('shows an error, not "no frameworks", when the list fails', () => {
+    vi.mocked(hooks.useCompetencyFrameworkOptions).mockReturnValue({ options: [], isLoading: false, isError: true });
+    render(<SkillFrameworkTab channel="ch1" />);
+    expect(screen.getByTestId('skill-framework-options-error')).toBeInTheDocument();
+    expect(screen.queryByTestId('skill-framework-none')).not.toBeInTheDocument();
   });
 
   it('warns when an opened framework has no categories', () => {

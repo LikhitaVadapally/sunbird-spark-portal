@@ -11,6 +11,7 @@ import { parseLearningPath } from '../services/learningPath/learningPathMapper';
 import { useSkillFields } from './useSkillFields';
 import { useSkillLabels } from './useSkillProfile';
 import { withSkillNames } from '../services/learningPath/skillNames';
+import { skillFrameworkOf } from '../services/learningPath/learningPathMapper';
 import {
   computeCourseProgress,
   computeLevelProgress,
@@ -50,11 +51,13 @@ export function useLearningPath(pathId: string | undefined, contextIdParam: stri
 
   // Skill tags live in the path's skill-framework field (`cuisine`, ...), not always `skill`.
   const pathFrameworkId = hierarchyData?.hierarchyRoot?.competencyFramework;
-  const { fieldOf } = useSkillFields([pathFrameworkId]);
+  // Until the field is known the path would be parsed under `skill` and show no skills, so the page
+  // waits for it (it shares the framework read used for names).
+  const { fieldOf, isLoading: fieldLoading } = useSkillFields([pathFrameworkId]);
   const skillField = fieldOf(pathFrameworkId);
   // Skill names come from the framework ("French Cuisine"), as on the course page; until it loads,
   // or for a code it doesn't know, the de-slugged code is shown.
-  const nameFrameworkId = pathFrameworkId ?? hierarchyData?.hierarchyRoot?.framework;
+  const nameFrameworkId = skillFrameworkOf(hierarchyData?.hierarchyRoot);
   const { labelOf } = useSkillLabels(nameFrameworkId ? [nameFrameworkId] : NO_IDS);
   const model = useMemo(
     () => withSkillNames(
@@ -152,7 +155,7 @@ export function useLearningPath(pathId: string | undefined, contextIdParam: stri
     isTrackable,
     isCreatorViewingOwnPath,
     isMentorViewingPath,
-    isLoading: authLoading || hierarchyLoading || summaryLoading,
+    isLoading: authLoading || hierarchyLoading || summaryLoading || fieldLoading,
     isError: hierarchyError,
   };
 }

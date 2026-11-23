@@ -18,8 +18,6 @@ export function describeFrameworkError(error: unknown, t: Translate): string {
       return t('userManagement.skillFramework.errors.invalidChannel');
     case 'ERR_DUPLICATE_CODE':
       return t('userManagement.skillFramework.errors.duplicateFramework');
-    default:
-      break;
   }
   if (err?.status === 404) return t('userManagement.skillFramework.errors.notFound');
   return err?.message

@@ -1,5 +1,6 @@
 import { useCallback, useMemo } from 'react';
-import { useQuery, useQueries, useMutation } from '@tanstack/react-query';
+import { useQuery, useQueries, useMutation, useQueryClient } from '@tanstack/react-query';
+import type { QueryClient } from '@tanstack/react-query';
 import type { UseMutationResult } from '@tanstack/react-query';
 import {
   skillService,
@@ -14,26 +15,48 @@ import {
   type TaxonomyFrameworkResponse,
 } from '@/services/skill';
 import { FrameworkService } from '@/services/FrameworkService';
-import { CompetencyFrameworkService } from '@/services/CompetencyFrameworkService';
 import { frameworkVocabulary } from '@/services/skill/skillLeaves';
+import {
+  FRAMEWORK_STALE_MS,
+  competencyFrameworkReadKey,
+  readCompetencyFramework,
+} from '@/services/skill/competencyFrameworkRead';
 import { useUserId } from './useAuthInfo';
+import { toQuerySlices } from './querySlices';
 import type { CompetencyFrameworkMeta, HeldSkill } from '@/types/skillServiceTypes';
 
 const frameworkService = new FrameworkService();
-const competencyFrameworkService = new CompetencyFrameworkService();
+
+/**
+ * Distinct, sorted ids that keep their identity while the CONTENT is unchanged. Callers pass a fresh
+ * `[frameworkId]` each render; keyed on that array, every memo downstream would rebuild every render.
+ */
+function useStableIds(frameworkIds: string[]): string[] {
+  const key = JSON.stringify(Array.from(new Set(frameworkIds.filter(Boolean))).sort());
+  return useMemo(() => JSON.parse(key) as string[], [key]);
+}
+
+/** Cache key for a framework's roles (lern `role/list`); role authoring invalidates it. */
+export const competencyRolesKey = (frameworkId: string) => ['competencyRoles', frameworkId] as const;
 
 /**
  * A framework's names and tree, whichever kind it is. `/framework/v1/read` serves the older
  * taxonomy frameworks (e.g. USF) but answers 404 for `CompetencyFramework` objects, which only
- * `/competency-framework/v3/read` serves - so a 404 falls back to that read.
+ * `/competency-framework/v3/read` serves - so a 404 falls back to that read. The id alone doesn't
+ * say which kind it is. The competency read goes through the shared cache entry, so the role
+ * editor's read of the same framework is reused.
  */
-async function readSkillVocabulary(id: string): Promise<SkillVocabulary> {
+async function readSkillVocabulary(queryClient: QueryClient, id: string): Promise<SkillVocabulary> {
   try {
     return buildSkillVocabulary(id, (await frameworkService.read<TaxonomyFrameworkResponse>(id)).data);
   } catch (err) {
     if ((err as { status?: number }).status !== 404) throw err;
-    const res = await competencyFrameworkService.read(id);
-    return frameworkVocabulary(id, res.data as TaxonomyFrameworkResponse);
+    const body = await queryClient.fetchQuery({
+      queryKey: competencyFrameworkReadKey(id),
+      queryFn: () => readCompetencyFramework(id),
+      staleTime: FRAMEWORK_STALE_MS,
+    });
+    return frameworkVocabulary(id, body);
   }
 }
 const NO_SKILLS: HeldSkill[] = [];
@@ -82,17 +105,17 @@ export function useSkillVocabularies(frameworkIds: string[]): {
   vocabularies: Record<string, SkillVocabulary | undefined>;
   isLoading: boolean;
 } {
-  const ids = useMemo(() => Array.from(new Set(frameworkIds.filter(Boolean))).sort(), [frameworkIds]);
+  const queryClient = useQueryClient();
+  const ids = useStableIds(frameworkIds);
 
   const treeQueries = useQueries({
     queries: ids.map((id) => ({
       queryKey: ['skillVocabulary', id],
-      queryFn: () => readSkillVocabulary(id),
+      queryFn: () => readSkillVocabulary(queryClient, id),
       enabled: Boolean(id),
-      // A framework changes on publish, not per session; refetching it on every focus only
-      // re-flashes the skeleton.
-      staleTime: 30 * 60 * 1000,
+      staleTime: FRAMEWORK_STALE_MS,
     })),
+    combine: toQuerySlices<SkillVocabulary>,
   });
 
   const vocabularies = useMemo(() => {
@@ -142,14 +165,14 @@ export function useSkillFrameworks(frameworkIds: string[]): {
   metas: Record<string, CompetencyFrameworkMeta | undefined>;
   isLoading: boolean;
 } {
-  const ids = useMemo(() => Array.from(new Set(frameworkIds.filter(Boolean))).sort(), [frameworkIds]);
+  const ids = useStableIds(frameworkIds);
 
   const metaQueries = useQueries({
     queries: ids.map((id) => ({
-      queryKey: ['competencyFrameworkV2', id],
+      queryKey: competencyRolesKey(id),
       queryFn: async () => {
         try {
-          return normaliseFrameworkMeta((await skillService.frameworkRead(id)).data);
+          return normaliseFrameworkMeta((await skillService.roleList(id)).data);
         } catch (err) {
           // role/list answers 404 when the framework has no roles yet: that is "no roles", not a failure.
           if ((err as { status?: number }).status === 404) return normaliseFrameworkMeta({ frameworkId: id });
@@ -158,6 +181,7 @@ export function useSkillFrameworks(frameworkIds: string[]): {
       },
       enabled: Boolean(id),
     })),
+    combine: toQuerySlices<CompetencyFrameworkMeta | undefined>,
   });
 
   const metas = useMemo(() => {

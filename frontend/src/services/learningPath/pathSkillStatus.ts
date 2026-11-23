@@ -23,8 +23,8 @@ export interface PathSkillSummary {
  * learner has not finished. A skill on a finished course that the profile does not record is in
  * neither list - the profile is the truth for "gained", and nothing here is left to do about it.
  *
- * Binary on purpose. A former "in progress" state (the best course percentage) made a half-watched
- * course look like a half-held skill; the evidence model has no such thing, so neither does this.
+ * Binary on purpose: the evidence model has no partly-held skill, so a half-watched course is not
+ * shown as a half-held skill.
  */
 export function computePathSkills(
   model: LearningPathModel,
@@ -52,9 +52,9 @@ export interface RoleReadiness {
 /**
  * Readiness against the path's target role: required skills held over required skills.
  *
- * Dormant until role-skill mapping is done. Returns undefined when the role requires nothing, so a
- * path with no `targetRole`, or a role with no skills mapped yet, shows no readiness at all rather
- * than a misleading 0%.
+ * Returns undefined when the role requires nothing, so a path with no `targetRole`, or a role with
+ * no skills mapped, shows no readiness at all rather than a misleading 0%. `taughtCodes` is
+ * everything the path teaches (root, Levels and courses).
  */
 export function computeRoleReadiness(
   requiredCodes: readonly string[] | undefined,

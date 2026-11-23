@@ -17,11 +17,9 @@ const DOT: Record<PathSkill['state'], string> = {
 /**
  * "Skills in this level" rail card.
  *
- * The right-hand label used to read "In scope" for every skill, which is true from the day the
- * path is published and tells a learner nothing: mastered and never-opened looked identical. It
- * now reports gained/pending by the My Skills rule, falling back to "In scope" only when there is
- * no state to show - an unenrolled visitor, or a finished course's skill the profile has not
- * recorded (neither gained nor pending).
+ * The right-hand label reports gained/pending by the My Skills rule. "In scope" is only the fallback
+ * when there is no state to show - an unenrolled visitor, or a finished course's skill the profile
+ * has not recorded (neither gained nor pending).
  */
 export function LevelSkillsCard({ codes, stateOf, name }: LevelSkillsCardProps) {
   const { t } = useAppI18n();

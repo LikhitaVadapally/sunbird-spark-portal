@@ -6,7 +6,7 @@ import { ContentPlayer } from "@/components/players";
 import PageLoader from "@/components/common/PageLoader";
 import { Toaster } from "@/components/common/Toaster";
 import { CourseSkillsSection } from "./CourseSkillsSection";
-import { skillSource } from "@/services/learningPath/learningPathMapper";
+import { skillFrameworkOf, skillSource } from "@/services/learningPath/learningPathMapper";
 import { useSkillFields } from "@/hooks/useSkillFields";
 
 interface CollectionOverviewProps {
@@ -51,8 +51,10 @@ const CollectionOverview = ({
   const { t } = useAppI18n();
   const root = collectionData.hierarchyRoot;
   // A course's skill tags live in its skill-framework field (`cuisine`, ...), not always `skill`.
-  const { fieldOf } = useSkillFields([root?.competencyFramework]);
-  const skillCodes = root ? skillSource(root, fieldOf(root.competencyFramework)) : [];
+  // Shown once the field is known: read under the default `skill` field, a course whose framework
+  // stores its skills elsewhere would first show the wrong list.
+  const { fieldOf, isLoading: fieldLoading } = useSkillFields([root?.competencyFramework]);
+  const skillCodes = root && !fieldLoading ? skillSource(root, fieldOf(root.competencyFramework)) : [];
 
   return (
     <div className="collection-overview-container">
@@ -155,7 +157,7 @@ const CollectionOverview = ({
           {skillCodes.length > 0 && (
             <CourseSkillsSection
               codes={skillCodes}
-              frameworkId={root?.competencyFramework ?? root?.framework}
+              frameworkId={skillFrameworkOf(root)}
             />
           )}
 

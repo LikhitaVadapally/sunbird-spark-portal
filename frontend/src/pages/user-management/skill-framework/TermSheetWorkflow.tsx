@@ -51,12 +51,9 @@ const saveExport = async (url: string, frameworkId: string): Promise<boolean> =>
 };
 
 /**
- * Steps 2-8: download -> (edit offline) -> upload -> validate (dry run) -> confirm -> commit -> publish.
- *
- * Skills only. Roles are not authored here yet: a role is a term in a "role" category whose
- * Associated Terms list the skills it requires. When that design lands, this is where the one
- * rule Knowlg does not enforce belongs - every role association must point at a LEAF skill, not
- * a grouping node - checked on the validate report before the commit is offered.
+ * The five steps after a framework is picked: download -> (edit offline) -> upload and validate
+ * (dry run) -> review and commit -> publish. Skills only; roles are authored on the Competency
+ * Role tab.
  */
 export function TermSheetWorkflow({ frameworkId, isEmpty = false, editBlocked }: TermSheetWorkflowProps) {
   const { t } = useAppI18n();
@@ -203,8 +200,7 @@ export function TermSheetWorkflow({ frameworkId, isEmpty = false, editBlocked }:
       {committed && (
         <section className="flex flex-col gap-2">
           <h3 className={stepTitle}>{t('userManagement.skillFramework.steps.publish')}</h3>
-          {/* Review/reject (POST /competency-framework/v3/review|reject/:id) is skipped for now:
-              publish works straight from Draft. Insert the review hand-off here once a reviewer flow exists. */}
+          {/* Publish works straight from Draft, so there is no review hand-off (review|reject) step. */}
           <div>
             <Button disabled={publish.isPending || publish.isSuccess} onClick={() => publish.mutate(frameworkId)} data-testid="skill-framework-publish">
               {publish.isPending ? t('userManagement.skillFramework.publishing') : t('userManagement.skillFramework.publish')}

@@ -223,10 +223,10 @@ describe('MySkills', () => {
     expect(screen.getByTestId('skill-growth-chart')).toBeInTheDocument();
   });
 
-  it('warns with a banner and a toast when the skill profile fails to load', () => {
+  it('warns with a banner, not also a toast, when the skill profile fails to load', () => {
     mockUseMySkills.mockReturnValue(withSkills([pendingAws], { profileError: true }));
     renderPage();
     expect(screen.getByTestId('my-skills-profile-error')).toBeInTheDocument();
-    expect(mockToast).toHaveBeenCalledWith(expect.objectContaining({ title: 'mySkills.profileError' }));
+    expect(mockToast).not.toHaveBeenCalled();
   });
 });

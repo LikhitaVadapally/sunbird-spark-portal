@@ -1,4 +1,10 @@
-import { frameworkCategories, type SkillVocabulary, type TierNode, type TaxonomyFrameworkResponse } from './skillTree';
+import {
+  buildCodeByName,
+  frameworkCategories,
+  type SkillVocabulary,
+  type TierNode,
+  type TaxonomyFrameworkResponse,
+} from './skillTree';
 
 /** A term as the competency framework read returns it; only the fields the walks need. */
 interface LeafTermWire {
@@ -93,7 +99,7 @@ export function frameworkVocabulary(
 
   const leafCodes = new Set(frameworkLeaves(body));
   const leaves: SkillVocabulary['leaves'] = {};
-  const top = [...categories].sort((a, b) => (a.index ?? 0) - (b.index ?? 0))[0];
+  const top = ordered(categories)[0];
   const { descendants } = treeOf(categories);
   const walk = (t: LeafTermWire, ancestors: TierNode[], seen: Set<string>) => {
     if (!t.code || (t.identifier && seen.has(t.identifier))) return;
@@ -110,13 +116,6 @@ export function frameworkVocabulary(
   leafCodes.forEach((code) => {
     if (!leaves[code]) leaves[code] = { code, name: labels[code] ?? code, path: [] };
   });
-  // Lower-cased skill name -> code, for content tagged by name; a name two skills share maps to neither.
-  const names: Record<string, string | null> = {};
-  Object.values(leaves).forEach(({ code, name }) => {
-    const key = name.trim().toLowerCase();
-    names[key] = names[key] === undefined || names[key] === code ? code : null;
-  });
-  const codeByName: Record<string, string> = {};
-  Object.entries(names).forEach(([key, code]) => code && (codeByName[key] = code));
+  const codeByName = buildCodeByName(Object.values(leaves).map(({ code, name }): [string, string] => [name, code]));
   return { frameworkId, labels, leaves, codeByName, skillField: frameworkSkillField(body) };
 }

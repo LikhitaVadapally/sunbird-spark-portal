@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { useQueries } from '@tanstack/react-query';
+import { toQuerySlices } from './querySlices';
 import { collectionHierarchyQueryOptions } from './useCollection';
 import { useUserEnrolledCollections } from './useUserEnrolledCollections';
 import { useViewerSummary } from './useViewerSummary';
@@ -91,6 +92,7 @@ export function useMySkills(): UseMySkillsResult {
 
   const hierarchyQueries = useQueries({
     queries: paths.map((path) => collectionHierarchyQueryOptions(path.pathId)),
+    combine: toQuerySlices<CollectionData | null>,
   });
 
   const summaryByCollectionId = useMemo(() => indexSummaryByCollectionId(summaryRecords), [summaryRecords]);
@@ -100,7 +102,8 @@ export function useMySkills(): UseMySkillsResult {
     () => hierarchyQueries.map((q) => (q?.data as CollectionData | null | undefined)?.hierarchyRoot?.competencyFramework),
     [hierarchyQueries]
   );
-  const { fieldOf } = useSkillFields(pathFrameworkIds);
+  // Parsed under the wrong field the paths would show no skills, so this counts as loading.
+  const { fieldOf, isLoading: fieldsLoading } = useSkillFields(pathFrameworkIds);
   const models = useMemo(
     () =>
       hierarchyQueries.map((query) => {
@@ -176,7 +179,6 @@ export function useMySkills(): UseMySkillsResult {
   const heldCodes = useMemo(() => heldCodeSet(profile.skills), [profile.skills]);
   const aggregate = useMemo(() => aggregateMySkills(skills, summaries), [skills, summaries]);
 
-
   return {
     entries,
     summaries,
@@ -189,7 +191,7 @@ export function useMySkills(): UseMySkillsResult {
     totalCount: paths.length,
     // Pending is "tagged minus held", so it cannot be shown before the profile lands without
     // flashing skills the learner already holds as pending.
-    isLoading: enrolments.isLoading || summaryLoading || profile.isLoading,
+    isLoading: enrolments.isLoading || summaryLoading || profile.isLoading || fieldsLoading,
     isError: enrolments.isError,
     profileError: profile.isError,
     refetch: () => {

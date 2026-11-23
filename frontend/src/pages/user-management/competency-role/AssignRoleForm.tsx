@@ -31,6 +31,11 @@ export function AssignRoleForm({ frameworkId }: AssignRoleFormProps) {
   const roles = meta?.roleCodes ?? [];
   const roleName = (code: string) => meta?.roleNames?.[code] ?? code;
   const canSubmit = Boolean(userId.trim() && frameworkId && role) && !assign.isPending;
+  // A result describes the request that was sent, so editing the form clears it.
+  const edit = (apply: () => void) => {
+    apply();
+    if (!assign.isIdle) assign.reset();
+  };
 
   return (
     <div className="flex flex-col gap-4" data-testid="competency-role-assign-form">
@@ -41,7 +46,7 @@ export function AssignRoleForm({ frameworkId }: AssignRoleFormProps) {
         <input
           className="rounded-lg border border-sunbird-gray-e5 bg-surface px-3 py-2"
           value={userId}
-          onChange={(e) => setUserId(e.target.value)}
+          onChange={(e) => edit(() => setUserId(e.target.value))}
           placeholder={t('userManagement.competencyRole.userIdPlaceholder')}
           data-testid="competency-role-user"
         />
@@ -52,7 +57,7 @@ export function AssignRoleForm({ frameworkId }: AssignRoleFormProps) {
         <select
           className="rounded-lg border border-sunbird-gray-e5 bg-surface px-3 py-2"
           value={role}
-          onChange={(e) => setRole(e.target.value)}
+          onChange={(e) => edit(() => setRole(e.target.value))}
           data-testid="competency-role-select"
         >
           <option value="">{t('userManagement.competencyRole.choose')}</option>
@@ -74,9 +79,9 @@ export function AssignRoleForm({ frameworkId }: AssignRoleFormProps) {
         </Button>
       </div>
 
-      {assign.isSuccess && (
+      {assign.isSuccess && assign.variables && (
         <p className="text-sm text-sunbird-green" data-testid="competency-role-done">
-          {t('userManagement.competencyRole.assigned', { role: roleName(role) })}
+          {t('userManagement.competencyRole.assigned', { role: roleName(assign.variables.role) })}
         </p>
       )}
       {assign.isError && (

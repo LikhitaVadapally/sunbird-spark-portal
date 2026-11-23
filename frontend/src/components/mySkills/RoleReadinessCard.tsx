@@ -12,12 +12,6 @@ interface RoleReadinessCardProps {
   isRemoving?: boolean;
 }
 
-/**
- * Readiness for one role: which of its skills the learner holds, and which are still missing.
- *
- * Neither "no role assigned" nor "role cannot be measured" renders a percentage: either as 0% would
- * tell a qualified learner they are unqualified.
- */
 interface SkillChipsProps {
   label: string;
   codes: string[];
@@ -47,6 +41,12 @@ function SkillChips({ label, codes, nameOf, tone, testId }: SkillChipsProps) {
   );
 }
 
+/**
+ * Readiness for one role: which of its skills the learner holds, and which are still missing.
+ *
+ * Neither "no role assigned" nor "role cannot be measured" renders a percentage: either as 0% would
+ * tell a qualified learner they are unqualified.
+ */
 export function RoleReadinessCard({ kind, card, nameOf, onRemove, isRemoving }: RoleReadinessCardProps) {
   const { t } = useAppI18n();
   const isAssigned = kind === 'assigned';

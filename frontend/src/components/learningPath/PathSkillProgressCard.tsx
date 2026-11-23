@@ -5,7 +5,7 @@ import type { PathSkill, PathSkillSummary, RoleReadiness } from '@/services/lear
 interface PathSkillProgressCardProps {
   summary: PathSkillSummary;
   name: (code: string) => string;
-  /** Readiness for the path's target role; omitted (and nothing role-related shown) until roles are mapped. */
+  /** Readiness for the path's target role; omitted (and nothing role-related shown) when the role requires no skills. */
   role?: { name: string } & RoleReadiness;
 }
 

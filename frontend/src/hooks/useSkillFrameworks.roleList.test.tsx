@@ -3,6 +3,7 @@ import { renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import { useSkillFrameworks, useSkillVocabularies } from './useSkillProfile';
+import { useFrameworkLeaves } from './useFrameworkLeaves';
 import { skillService } from '@/services/skill';
 import { FrameworkService } from '@/services/FrameworkService';
 import { CompetencyFrameworkService } from '@/services/CompetencyFrameworkService';
@@ -21,7 +22,7 @@ beforeEach(() => {
 
 describe('useSkillFrameworks with role/list', () => {
   it('reads roles and role names', async () => {
-    vi.spyOn(skillService, 'frameworkRead').mockResolvedValue({
+    vi.spyOn(skillService, 'roleList').mockResolvedValue({
       data: { frameworkId: 'fw', roles: { nurse: ['dose'] }, roleNames: { nurse: 'Nurse' } },
       status: 200,
       headers: {},
@@ -33,7 +34,7 @@ describe('useSkillFrameworks with role/list', () => {
   });
 
   it('treats a 404 as a framework with no roles', async () => {
-    vi.spyOn(skillService, 'frameworkRead').mockRejectedValue(httpError(404));
+    vi.spyOn(skillService, 'roleList').mockRejectedValue(httpError(404));
     const { result } = renderHook(() => useSkillFrameworks(['fw']), { wrapper });
     await waitFor(() => expect(result.current.metas.fw).toBeDefined());
     expect(result.current.metas.fw?.roleCodes).toEqual([]);
@@ -41,7 +42,7 @@ describe('useSkillFrameworks with role/list', () => {
   });
 
   it('still fails on other errors', async () => {
-    vi.spyOn(skillService, 'frameworkRead').mockRejectedValue(httpError(500));
+    vi.spyOn(skillService, 'roleList').mockRejectedValue(httpError(500));
     const { result } = renderHook(() => useSkillFrameworks(['fw']), { wrapper });
     await waitFor(() => expect(result.current.isLoading).toBe(false));
     expect(result.current.metas.fw).toBeUndefined();
@@ -72,5 +73,34 @@ describe('useSkillVocabularies', () => {
     const { result } = renderHook(() => useSkillVocabularies(['fw']), { wrapper });
     await waitFor(() => expect(result.current.vocabularies.fw).toBeDefined());
     expect(competencyRead).not.toHaveBeenCalled();
+  });
+
+  it('keeps the same vocabularies object across re-renders once loaded', async () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const stable = ({ children }: { children: ReactNode }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>;
+    const { result, rerender } = renderHook(() => useSkillVocabularies(['fw']), { wrapper: stable });
+    await waitFor(() => expect(result.current.vocabularies.fw).toBeDefined());
+    const first = result.current.vocabularies;
+    rerender();
+    rerender();
+    // A new object per render would re-run every memo keyed on it (names, path skills, My Skills).
+    expect(result.current.vocabularies).toBe(first);
+  });
+
+  it('reads a competency framework once for both skill names and the role editor', async () => {
+    vi.spyOn(FrameworkService.prototype, 'read').mockRejectedValue(httpError(404));
+    const competencyRead = vi
+      .spyOn(CompetencyFrameworkService.prototype, 'read')
+      .mockResolvedValue({ data: competencyTree, status: 200, headers: {} } as never);
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const stable = ({ children }: { children: ReactNode }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>;
+    const { result } = renderHook(
+      () => ({ names: useSkillVocabularies(['fw']), leaves: useFrameworkLeaves('fw') }),
+      { wrapper: stable },
+    );
+    await waitFor(() => expect(result.current.names.vocabularies.fw).toBeDefined());
+    await waitFor(() => expect(result.current.leaves.isLoaded).toBe(true));
+    expect(result.current.leaves.leaves).toEqual(['hmis']);
+    expect(competencyRead).toHaveBeenCalledTimes(1);
   });
 });
