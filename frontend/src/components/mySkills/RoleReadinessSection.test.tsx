@@ -22,9 +22,15 @@ const meta: CompetencyFrameworkMeta = {
   roleNames: { 'icu-nurse': 'ICU Nurse', officer: 'Nursing Officer', supervisor: 'Supervisor', 'old-role': 'Old Role' },
   roleCodes: ['icu-nurse', 'officer', 'supervisor'],
 };
+let roleNames: Record<string, string> = {};
 vi.mock('@/hooks/useSkillProfile', () => ({
   useSkillProfile: () => ({ skills: [] }),
   useSkillFrameworks: (ids: string[]) => ({ metas: ids.includes('fw') ? { fw: meta } : {} }),
+  // Names from the role's own framework; unresolved unless a test provides them.
+  useSkillLabels: () => ({
+    labelOf: (code: string) => (roleNames[code] ? { name: roleNames[code], resolved: true } : { name: code, resolved: false }),
+    isLoading: false,
+  }),
 }));
 
 const roleGap = (role: string, over: Partial<RoleGap> = {}): RoleGap => ({
@@ -68,6 +74,7 @@ beforeEach(() => {
     isError: false,
   };
   recommendation = undefined;
+  roleNames = {};
 });
 
 describe('RoleReadinessSection', () => {
@@ -172,4 +179,13 @@ describe('RoleReadinessSection', () => {
     fireEvent.click(within(screen.getByTestId('role-readiness-error')).getByText('retry'));
     expect(refetch).toHaveBeenCalled();
   });
+
+  // The page's names skip a framework the learner has no skills or paths in yet.
+  it('names the role\'s skills from the role\'s own framework when the page cannot', () => {
+    roleNames = { b: 'Use Flexbox' };
+    renderSection();
+    expect(screen.getAllByText('Use Flexbox').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Skill a').length).toBeGreaterThan(0);
+  });
 });
+

@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { FiArrowRight } from 'react-icons/fi';
 import { useAppI18n } from '@/hooks/useAppI18n';
 import { useToast } from '@/hooks/useToast';
-import { useSkillFrameworks, useSkillProfile } from '@/hooks/useSkillProfile';
+import { useSkillFrameworks, useSkillLabels, useSkillProfile } from '@/hooks/useSkillProfile';
 import { useSkillGap, useSkillRecommend, useUpdateTargetRoles } from '@/hooks/useRoleReadiness';
 import { addableRoles, buildRoleCards, pickRoleFramework } from '@/services/skill/roleReadiness';
 import { RolePicker } from '@/components/skillProfile/RolePicker';
@@ -40,7 +40,13 @@ export function RoleReadinessSection({ labelOf, className = '' }: RoleReadinessS
   const targets = cards.filter((c) => c.kind === 'target');
   const addable = addableRoles(meta, gap);
   const roleName = (code: string) => meta?.roleNames[code] ?? code;
-  const nameOf = (code: string) => labelOf(code, frameworkId).name;
+  // The page's names cover only frameworks the learner already has skills or paths in; a role's
+  // framework may be neither, so its names are loaded here and tried first.
+  const { labelOf: roleLabelOf } = useSkillLabels(frameworkId ? [frameworkId] : []);
+  const nameOf = (code: string) => {
+    const own = roleLabelOf(code, frameworkId);
+    return own.resolved ? own.name : labelOf(code, frameworkId).name;
+  };
 
   // Next steps only make sense for a role with something still to earn.
   const actionable = cards
