@@ -15,6 +15,7 @@ import { getClient, ApiResponse } from '../lib/http-client';
  *   POST  /competency-framework/v3/create              { request: { competencyFramework: {...} } }
  *   GET   /competency-framework/v3/read/:id            -> result.framework
  *   POST  /competency-framework/v3/publish/:id         channel comes from X-Channel-Id
+ *   DELETE /competency-framework/v3/retire/:id         marks it Retired (offered for Draft only)
  *   POST  /framework/v1/category/create?framework=  attach a master category (knowledge-mw -> Knowlg)
  *   POST  /framework/v3/category/master/create      create a master category (global, shared by all orgs)
  *   POST  /composite/v1/search                         objectType CompetencyFramework -> result.CompetencyFramework
@@ -22,7 +23,7 @@ import { getClient, ApiResponse } from '../lib/http-client';
  *   POST  /framework/v3/term/validate                  multipart: framework + file (dry run)
  *   POST  /framework/v3/term/commit                    multipart: framework + file (writes)
  *
- * The backend also guards update, review, reject and retire so they can't fall through to its
+ * The backend also guards update, review and reject so they can't fall through to its
  * catch-all proxy; this client doesn't call them, since publish works straight from Draft.
  */
 const COMPETENCY_FRAMEWORK = '/competency-framework/v3';
@@ -67,7 +68,8 @@ export interface CompetencyFrameworkDetails {
   description?: string;
   channel?: string;
   status?: string;
-  categories?: Array<{ code?: string; name?: string; terms?: unknown[] }>;
+  /** Knowlg's framework read can omit `code`; `identifier` is `<frameworkId>_<code>`. */
+  categories?: Array<{ identifier?: string; code?: string; name?: string; index?: number; terms?: unknown[] }>;
   [key: string]: unknown;
 }
 
@@ -176,6 +178,11 @@ export class CompetencyFrameworkService {
 
   public publish(frameworkId: string): Promise<ApiResponse<{ identifier?: string; status?: string; version?: number }>> {
     return getClient().post(`${COMPETENCY_FRAMEWORK}/publish/${encodeURIComponent(frameworkId)}`, { request: {} });
+  }
+
+  /** Retires a framework: Knowlg marks it Retired, so search and every picker stop listing it. */
+  public retire(frameworkId: string): Promise<ApiResponse<{ identifier?: string }>> {
+    return getClient().delete(`${COMPETENCY_FRAMEWORK}/retire/${encodeURIComponent(frameworkId)}`);
   }
 
   /**

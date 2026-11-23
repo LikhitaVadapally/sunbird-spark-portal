@@ -1344,6 +1344,10 @@
       "creating": "Creating…",
       "status": "Status: {{status}}",
       "change": "Choose another framework",
+      "retire": "Retire",
+      "retiring": "Retiring...",
+      "retireTitle": "Retire {{name}}?",
+      "retireDescription": "It will be hidden from every framework picker. This can't be undone.",
       "newHint": "This framework has no skills yet. Download the blank template, add one row per skill, then upload it. In the Category column use: {{categories}}.",
       "steps": {
         "download": "1. Download the spreadsheet",
@@ -1354,7 +1358,7 @@
         "publish": "5. Publish"
       },
       "templateHint": "It has the columns the upload expects: Category, Name, Code, Associated Terms and Description.",
-      "downloadHint": "Each row is one item: a competency area, a competency or a skill (set by the Category column). Link each item to its parent in Associated Terms (category:code). Start from the current export so nothing is left out by accident.",
+      "downloadHint": "Each row is one item, and its Category column is one of: {{categories}}. Link each item to its parent in Associated Terms (category:code). Start from the current export so nothing is left out by accident.",
       "downloadCurrent": "Download current skills",
       "downloadTemplate": "Download blank template",
       "preparing": "Preparing…",

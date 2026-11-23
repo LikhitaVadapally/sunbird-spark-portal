@@ -1327,6 +1327,10 @@
       "creating": "A criar…",
       "status": "Estado: {{status}}",
       "change": "Escolher outro referencial",
+      "retire": "Retirar",
+      "retiring": "A retirar...",
+      "retireTitle": "Retirar {{name}}?",
+      "retireDescription": "Deixará de aparecer em todas as listas de referenciais. Esta ação não pode ser desfeita.",
       "newHint": "Este referencial ainda não tem habilidades. Transfira o modelo em branco, adicione uma linha por habilidade e depois carregue-o. Na coluna Category use: {{categories}}.",
       "steps": {
         "download": "1. Transferir a folha de cálculo",
@@ -1337,7 +1341,7 @@
         "publish": "5. Publicar"
       },
       "templateHint": "Tem as colunas que o carregamento espera: Category, Name, Code, Associated Terms e Description.",
-      "downloadHint": "Cada linha é um item: uma área de competência, uma competência ou uma habilidade (definido pela coluna Category). Ligue cada item ao seu pai em Associated Terms (categoria:código). Comece pela exportação atual para não deixar nada de fora por engano.",
+      "downloadHint": "Cada linha é um item, e a sua coluna Category é uma destas: {{categories}}. Ligue cada item ao seu pai em Associated Terms (categoria:código). Comece pela exportação atual para não deixar nada de fora por engano.",
       "downloadCurrent": "Transferir as habilidades atuais",
       "downloadTemplate": "Transferir o modelo em branco",
       "preparing": "A preparar…",

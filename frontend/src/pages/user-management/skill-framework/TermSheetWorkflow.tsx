@@ -16,6 +16,8 @@ interface TermSheetWorkflowProps {
   frameworkId: string;
   /** The framework has no skills yet, so there is nothing to export: only the blank template is offered. */
   isEmpty?: boolean;
+  /** The framework's level codes, top to bottom: the values a sheet's Category column may use. */
+  categoryCodes: readonly string[];
   /** Blocked statuses (Review/Processing) get a banner; the server rejects the upload anyway. */
   editBlocked: boolean;
 }
@@ -55,7 +57,7 @@ const saveExport = async (url: string, frameworkId: string): Promise<boolean> =>
  * (dry run) -> review and commit -> publish. Skills only; roles are authored on the Competency
  * Role tab.
  */
-export function TermSheetWorkflow({ frameworkId, isEmpty = false, editBlocked }: TermSheetWorkflowProps) {
+export function TermSheetWorkflow({ frameworkId, isEmpty = false, categoryCodes, editBlocked }: TermSheetWorkflowProps) {
   const { t } = useAppI18n();
   const download = useDownloadTermSheet();
   const validate = useValidateTermSheet();
@@ -106,7 +108,7 @@ export function TermSheetWorkflow({ frameworkId, isEmpty = false, editBlocked }:
 
       <section className="flex flex-col gap-2">
         <h3 className={stepTitle}>{t(isEmpty ? 'userManagement.skillFramework.steps.downloadTemplate' : 'userManagement.skillFramework.steps.download')}</h3>
-        <p className="text-sm text-sunbird-gray-75">{t(isEmpty ? 'userManagement.skillFramework.templateHint' : 'userManagement.skillFramework.downloadHint')}</p>
+        <p className="text-sm text-sunbird-gray-75">{isEmpty ? t('userManagement.skillFramework.templateHint') : t('userManagement.skillFramework.downloadHint', { categories: categoryCodes.join(', ') })}</p>
         <div className="flex flex-wrap gap-2">
           {!isEmpty && (
             <Button variant="outline" disabled={download.isPending} onClick={() => download.mutate(frameworkId)} data-testid="skill-framework-download">

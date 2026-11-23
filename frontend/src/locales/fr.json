@@ -1327,6 +1327,10 @@
       "creating": "Création…",
       "status": "Statut : {{status}}",
       "change": "Choisir un autre référentiel",
+      "retire": "Retirer",
+      "retiring": "Retrait...",
+      "retireTitle": "Retirer {{name}} ?",
+      "retireDescription": "Il ne sera plus proposé dans aucune liste de référentiels. Cette action est irréversible.",
       "newHint": "Ce référentiel n'a pas encore de compétences. Téléchargez le modèle vierge, ajoutez une ligne par compétence, puis importez-le. Dans la colonne Category, utilisez : {{categories}}.",
       "steps": {
         "download": "1. Télécharger le tableur",
@@ -1337,7 +1341,7 @@
         "publish": "5. Publier"
       },
       "templateHint": "Il contient les colonnes attendues par l'import : Category, Name, Code, Associated Terms et Description.",
-      "downloadHint": "Chaque ligne est un élément : un domaine de compétences, une compétence ou une compétence spécifique (défini par la colonne Category). Reliez chaque élément à son parent dans Associated Terms (catégorie:code). Partez de l'export actuel pour ne rien oublier par erreur.",
+      "downloadHint": "Chaque ligne est un élément ; sa colonne Category prend l'une de ces valeurs : {{categories}}. Reliez chaque élément à son parent dans Associated Terms (catégorie:code). Partez de l'export actuel pour ne rien oublier par erreur.",
       "downloadCurrent": "Télécharger les compétences actuelles",
       "downloadTemplate": "Télécharger le modèle vierge",
       "preparing": "Préparation…",

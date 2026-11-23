@@ -15,6 +15,7 @@ vi.mock('@/hooks/useCompetencyFrameworkAdmin', () => ({
   useValidateTermSheet: vi.fn(),
   useCommitTermSheet: vi.fn(),
   usePublishCompetencyFramework: vi.fn(),
+  useRetireCompetencyFramework: vi.fn(),
 }));
 
 // Radix Select needs real pointer events; a native <select> keeps the same contract for tests.
@@ -36,7 +37,7 @@ const mut = (over: Partial<Mut> = {}): Mut => ({ mutate: vi.fn(), reset: vi.fn()
 const asHook = (m: Mut) => m as unknown as ReturnType<typeof hooks.useValidateTermSheet>;
 
 const summary = { toCreate: 12, toUpdate: 3, toUpdateLive: 1, toUpdateDraft: 2, toRetire: 2, errors: 0, warnings: 0 };
-let read: Mut, create: Mut, download: Mut, validate: Mut, commit: Mut, publish: Mut;
+let read: Mut, create: Mut, download: Mut, validate: Mut, commit: Mut, publish: Mut, retire: Mut;
 
 const setup = () => {
   vi.mocked(hooks.useCompetencyFrameworkOptions).mockReturnValue({ options: [{ id: 'fw_a', name: 'Nursing', status: 'Live' }], isLoading: false, isError: false });
@@ -46,6 +47,7 @@ const setup = () => {
   vi.mocked(hooks.useValidateTermSheet).mockReturnValue(asHook(validate));
   vi.mocked(hooks.useCommitTermSheet).mockReturnValue(asHook(commit) as never);
   vi.mocked(hooks.usePublishCompetencyFramework).mockReturnValue(asHook(publish) as never);
+  vi.mocked(hooks.useRetireCompetencyFramework).mockReturnValue(asHook(retire) as never);
 };
 
 beforeEach(() => {
@@ -56,6 +58,7 @@ beforeEach(() => {
   validate = mut();
   commit = mut();
   publish = mut();
+  retire = mut();
   setup();
 });
 
@@ -289,6 +292,31 @@ describe('SkillFrameworkTab', () => {
     expect(screen.getByTestId('skill-framework-new-hint')).toHaveTextContent('competency, skill');
   });
 
+  // Knowlg's read can omit a level's code; the hint must still name the framework's own levels.
+  it('names a new framework\'s own levels, in order, when the read leaves out their codes', () => {
+    read.mutate = vi.fn((id: string, opts?: { onSuccess?: (fw: unknown) => void }) =>
+      opts?.onSuccess?.({ identifier: id, status: 'Draft', categories: [
+        { identifier: `${id}_skill`, name: 'Skill', index: 4 },
+        { identifier: `${id}_track`, name: 'Track', index: 1 },
+        { identifier: `${id}_area`, name: 'Area', index: 2 },
+        { identifier: `${id}_competency`, name: 'Competency', index: 3 },
+      ] }));
+    renderTab();
+    openFramework();
+    expect(screen.getByTestId('skill-framework-new-hint')).toHaveTextContent('track, area, competency, skill');
+  });
+
+  it('names the framework\'s own levels in the download hint of a framework that has skills', () => {
+    read.mutate = vi.fn((id: string, opts?: { onSuccess?: (fw: unknown) => void }) =>
+      opts?.onSuccess?.({ identifier: id, status: 'Live', categories: [
+        { identifier: `${id}_track`, index: 1 },
+        { identifier: `${id}_skill`, index: 2, terms: [{ code: 's1' }] },
+      ] }));
+    renderTab();
+    openFramework();
+    expect(screen.getByText(/userManagement\.skillFramework\.downloadHint/)).toHaveTextContent('track, skill');
+  });
+
   it('commits straight away, without a warning, when nothing will be retired', () => {
     validate.data = { valid: true, summary: { ...summary, toRetire: 0 }, rows: [] };
     renderTab();
@@ -298,5 +326,44 @@ describe('SkillFrameworkTab', () => {
     expect(screen.queryByTestId('skill-framework-acknowledge')).not.toBeInTheDocument();
     fireEvent.click(screen.getByTestId('skill-framework-commit'));
     expect(commit.mutate).toHaveBeenCalledWith({ frameworkId: 'fw_a', file });
+  });
+
+  describe('retire', () => {
+    const openDraft = () => {
+      read.mutate = vi.fn((id: string, opts?: { onSuccess?: (fw: unknown) => void }) => opts?.onSuccess?.({ identifier: id, name: 'Nursing', status: 'Draft', categories: [] }));
+      setup();
+      renderTab();
+      openFramework();
+    };
+
+    it('is offered only for a Draft framework', () => {
+      renderTab();
+      openFramework();
+      expect(screen.queryByTestId('skill-framework-retire')).not.toBeInTheDocument();
+    });
+
+    it('retires a Draft framework after confirming, then goes back to the picker', () => {
+      retire.mutate = vi.fn((_id: string, opts?: { onSuccess?: () => void }) => opts?.onSuccess?.());
+      openDraft();
+      fireEvent.click(screen.getByTestId('skill-framework-retire'));
+      expect(retire.mutate).not.toHaveBeenCalled();
+      fireEvent.click(screen.getByTestId('skill-framework-retire-confirm'));
+      expect(retire.mutate).toHaveBeenCalledWith('fw_a', expect.anything());
+      expect(screen.queryByTestId('skill-framework-selected')).not.toBeInTheDocument();
+    });
+
+    it('does nothing when the confirmation is cancelled', () => {
+      openDraft();
+      fireEvent.click(screen.getByTestId('skill-framework-retire'));
+      fireEvent.click(screen.getByRole('button', { name: /cancel/i }));
+      expect(retire.mutate).not.toHaveBeenCalled();
+      expect(screen.getByTestId('skill-framework-selected')).toBeInTheDocument();
+    });
+
+    it('shows why a retire failed', () => {
+      retire.error = Object.assign(new Error('nope'), { status: 403 });
+      openDraft();
+      expect(screen.getByTestId('skill-framework-retire-error')).toBeInTheDocument();
+    });
   });
 });

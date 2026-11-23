@@ -2,7 +2,7 @@ import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, waitFor, act } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { useValidateTermSheet, useCommitTermSheet, useCompetencyFrameworkOptions, useCreateCompetencyFramework } from './useCompetencyFrameworkAdmin';
+import { useValidateTermSheet, useCommitTermSheet, useCompetencyFrameworkOptions, useCreateCompetencyFramework, useRetireCompetencyFramework } from './useCompetencyFrameworkAdmin';
 import { competencyFrameworkService } from '@/services/CompetencyFrameworkService';
 
 vi.mock('@/services/CompetencyFrameworkService', async (orig) => {
@@ -16,6 +16,7 @@ vi.mock('@/services/CompetencyFrameworkService', async (orig) => {
       createMasterCategory: vi.fn(),
       validateTerms: vi.fn(),
       commitTerms: vi.fn(),
+      retire: vi.fn(),
     },
   };
 });
@@ -150,12 +151,62 @@ describe('useCreateCompetencyFramework', () => {
     expect(competencyFrameworkService.attachCategory).toHaveBeenCalledTimes(2);
   });
 
+  // knowledge-mw drops Knowlg's error code and answers a missing category with a bare 404.
+  it('creates a missing master category when the attach answers a bare 404', async () => {
+    vi.mocked(competencyFrameworkService.create).mockResolvedValue({ data: { node_id: 'fw_fe' }, status: 200, headers: {} });
+    vi.mocked(competencyFrameworkService.attachCategory)
+      .mockRejectedValueOnce(apiError({ status: 404, errCode: undefined }))
+      .mockResolvedValue(ok);
+    vi.mocked(competencyFrameworkService.createMasterCategory).mockResolvedValue(ok);
+    const { result } = renderHook(() => useCreateCompetencyFramework(), { wrapper });
+    act(() => result.current.mutate({ ...input, levels: [{ code: 'track', name: 'Track' }] }));
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(competencyFrameworkService.createMasterCategory).toHaveBeenCalledWith({ code: 'track', name: 'Track' });
+    expect(competencyFrameworkService.attachCategory).toHaveBeenCalledTimes(2);
+  });
+
   it('fails when the missing master category cannot be created', async () => {
     vi.mocked(competencyFrameworkService.create).mockResolvedValue({ data: { node_id: 'fw_cook' }, status: 200, headers: {} });
     vi.mocked(competencyFrameworkService.attachCategory).mockRejectedValue(apiError({ status: 400, errCode: 'ERR_CATEGORY_NOT_FOUND' }));
     vi.mocked(competencyFrameworkService.createMasterCategory).mockRejectedValue(apiError({ status: 403, errCode: 'ERR_FORBIDDEN' }));
     const { result } = renderHook(() => useCreateCompetencyFramework(), { wrapper });
     act(() => result.current.mutate({ ...input, levels: [{ code: 'cuisine', name: 'Cuisine' }] }));
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(result.current.error?.errCode).toBe('ERR_FORBIDDEN');
+  });
+});
+
+describe('useRetireCompetencyFramework', () => {
+  it('retires the framework and drops it from the cached lists without a refetch', async () => {
+    vi.mocked(competencyFrameworkService.retire).mockResolvedValue({ data: { identifier: 'fw_gone' }, status: 200, headers: {} });
+    const client = new QueryClient();
+    client.setQueryData(['competencyFrameworkList', 'ch1'], [{ identifier: 'fw_keep' }, { identifier: 'fw_gone' }]);
+    const invalidate = vi.spyOn(client, 'invalidateQueries');
+    const own = ({ children }: { children: React.ReactNode }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>;
+    const { result } = renderHook(() => useRetireCompetencyFramework(), { wrapper: own });
+    act(() => result.current.mutate('fw_gone'));
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(competencyFrameworkService.retire).toHaveBeenCalledWith('fw_gone');
+    expect(client.getQueryData(['competencyFrameworkList', 'ch1'])).toEqual([{ identifier: 'fw_keep' }]);
+    expect(invalidate).not.toHaveBeenCalled();
+  });
+
+  // Search lags the retire, so a later refetch can still return the framework.
+  it('keeps a retired framework out of the options even when search still returns it', async () => {
+    vi.mocked(competencyFrameworkService.retire).mockResolvedValue({ data: {}, status: 200, headers: {} });
+    vi.mocked(competencyFrameworkService.list).mockResolvedValue({
+      data: { CompetencyFramework: [{ identifier: 'fw_keep' }, { identifier: 'fw_stale' }] }, status: 200, headers: {},
+    } as never);
+    const { result } = renderHook(() => ({ retire: useRetireCompetencyFramework(), opts: useCompetencyFrameworkOptions('ch1') }), { wrapper });
+    await waitFor(() => expect(result.current.opts.options).toHaveLength(2));
+    act(() => result.current.retire.mutate('fw_stale'));
+    await waitFor(() => expect(result.current.opts.options.map((o) => o.id)).toEqual(['fw_keep']));
+  });
+
+  it('surfaces a failed retire', async () => {
+    vi.mocked(competencyFrameworkService.retire).mockRejectedValue(apiError({ status: 403, errCode: 'ERR_FORBIDDEN' }));
+    const { result } = renderHook(() => useRetireCompetencyFramework(), { wrapper });
+    act(() => result.current.mutate('fw_a'));
     await waitFor(() => expect(result.current.isError).toBe(true));
     expect(result.current.error?.errCode).toBe('ERR_FORBIDDEN');
   });

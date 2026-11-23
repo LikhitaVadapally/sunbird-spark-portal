@@ -33,6 +33,12 @@ describe('CompetencyFrameworkService', () => {
     expect(mockClient.post).toHaveBeenCalledWith('/competency-framework/v3/publish/fw1', { request: {} });
   });
 
+  it('retires by an encoded identifier', async () => {
+    vi.mocked(mockClient.delete).mockResolvedValue({ data: {}, status: 200, headers: {} });
+    await service.retire('fw 1');
+    expect(mockClient.delete).toHaveBeenCalledWith('/competency-framework/v3/retire/fw%201');
+  });
+
   it('lists draft and live competency frameworks via composite search', async () => {
     await service.list('ch1');
     expect(mockClient.post).toHaveBeenCalledWith('/composite/v1/search', {

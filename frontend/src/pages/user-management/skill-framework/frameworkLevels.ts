@@ -1,4 +1,4 @@
-import type { FrameworkLevel } from '@/services/CompetencyFrameworkService';
+import type { CompetencyFrameworkDetails, FrameworkLevel } from '@/services/CompetencyFrameworkService';
 
 export const MAX_LEVELS = 5;
 
@@ -39,3 +39,18 @@ export function levelErrors(levels: readonly FrameworkLevel[]): Array<LevelError
 
 export const levelsValid = (levels: readonly FrameworkLevel[]): boolean =>
   levels.length > 0 && levels.length <= MAX_LEVELS && levelErrors(levels).every((e) => !e);
+
+/**
+ * A framework's attached levels, top to bottom. Knowlg's read can leave out a level's `code`, so
+ * it falls back to the identifier, which is `<frameworkId>_<code>`.
+ */
+export function frameworkLevelsOf(framework: CompetencyFrameworkDetails): FrameworkLevel[] {
+  const prefix = `${framework.identifier}_`;
+  return [...(framework.categories ?? [])]
+    .sort((a, b) => (a.index ?? Number.MAX_SAFE_INTEGER) - (b.index ?? Number.MAX_SAFE_INTEGER))
+    .map((c) => {
+      const code = c.code || (c.identifier?.startsWith(prefix) ? c.identifier.slice(prefix.length) : c.identifier) || '';
+      return { code, name: c.name || code };
+    })
+    .filter((l) => Boolean(l.code));
+}

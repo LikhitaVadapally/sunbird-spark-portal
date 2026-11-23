@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   competencyFrameworkService,
   SKILL_FRAMEWORK_CATEGORIES,
@@ -26,6 +26,12 @@ export interface FrameworkOptions {
 }
 
 /**
+ * Frameworks retired in this session. Search updates a few seconds after a retire, so a refetch
+ * right after it still returns the framework; these ids are dropped from the lists meanwhile.
+ */
+const retiredFrameworkIds = new Set<string>();
+
+/**
  * Frameworks to offer in the admin pickers: composite search for objectType CompetencyFramework
  * in the admin's channel. An org can have several. Nothing is fetched until the channel is known:
  * an unscoped search would return every tenant's frameworks.
@@ -38,7 +44,7 @@ export function useCompetencyFrameworkOptions(channel: string): FrameworkOptions
     retry: false,
   });
   const options = (query.data ?? [])
-    .filter((f) => Boolean(f.identifier))
+    .filter((f) => Boolean(f.identifier) && !retiredFrameworkIds.has(f.identifier))
     .map((f) => ({ id: f.identifier, name: f.name, status: f.status }));
   // Until the channel is known the query is idle, which still counts as loading for the pickers.
   return { options, isLoading: !channel || query.isLoading, isError: query.isError };
@@ -65,15 +71,25 @@ const skipDuplicate = (e: unknown) => {
 };
 
 /**
+ * The attach found no master category with the level's code. knowledge-mw passes Knowlg's
+ * NOT_FOUND on as a bare 404 with no errCode, so the status counts too. The framework was
+ * created a moment earlier, so a 404 here can only mean the category.
+ */
+const isMissingCategory = (e: unknown) => {
+  const err = e as FrameworkApiError;
+  return err?.errCode === 'ERR_CATEGORY_NOT_FOUND' || err?.status === 404;
+};
+
+/**
  * Attaches one level. A level no framework has used yet isn't a Knowlg master category, so the
- * attach answers ERR_CATEGORY_NOT_FOUND: create the master category, then attach again.
+ * attach fails as missing: create the master category, then attach again.
  */
 async function attachLevel(frameworkId: string, level: FrameworkLevel): Promise<void> {
   try {
     await competencyFrameworkService.attachCategory(frameworkId, level);
   } catch (e) {
     if (isDuplicate(e)) return;
-    if ((e as FrameworkApiError)?.errCode !== 'ERR_CATEGORY_NOT_FOUND') throw e;
+    if (!isMissingCategory(e)) throw e;
     await competencyFrameworkService.createMasterCategory(level);
     await competencyFrameworkService.attachCategory(frameworkId, level).catch(skipDuplicate);
   }
@@ -141,5 +157,23 @@ export function useCommitTermSheet() {
 export function usePublishCompetencyFramework() {
   return useMutation<unknown, FrameworkApiError, string>({
     mutationFn: async (id) => (await competencyFrameworkService.publish(id)).data,
+  });
+}
+
+/**
+ * Retires a framework and drops it from the cached framework lists straight away. Not a refetch:
+ * search still returns the framework for a few seconds after the retire.
+ */
+export function useRetireCompetencyFramework() {
+  const queryClient = useQueryClient();
+  return useMutation<unknown, FrameworkApiError, string>({
+    mutationFn: async (id) => (await competencyFrameworkService.retire(id)).data,
+    onSuccess: (_data, id) => {
+      retiredFrameworkIds.add(id);
+      queryClient.setQueriesData<CompetencyFrameworkDetails[]>(
+        { queryKey: ['competencyFrameworkList'] },
+        (list) => list?.filter((f) => f.identifier !== id),
+      );
+    },
   });
 }

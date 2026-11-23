@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { levelCodeFromName, levelErrors, levelsValid, MAX_LEVELS } from './frameworkLevels';
+import { frameworkLevelsOf, levelCodeFromName, levelErrors, levelsValid, MAX_LEVELS } from './frameworkLevels';
 
 const lv = (code: string, name = code) => ({ code, name });
 
@@ -33,5 +33,23 @@ describe('levelsValid', () => {
     expect(levelsValid([lv('cuisine')])).toBe(true);
     expect(levelsValid(Array.from({ length: MAX_LEVELS + 1 }, (_, i) => lv(`l${i}`)))).toBe(false);
     expect(levelsValid([lv('subject')])).toBe(false);
+  });
+});
+
+describe('frameworkLevelsOf', () => {
+  it('orders levels by index and takes the code from the identifier when the read omits it', () => {
+    expect(frameworkLevelsOf({ identifier: 'fw', categories: [
+      { identifier: 'fw_skill', name: 'Skill', index: 2 },
+      { identifier: 'fw_track', name: 'Track', index: 1 },
+    ] })).toEqual([{ code: 'track', name: 'Track' }, { code: 'skill', name: 'Skill' }]);
+  });
+
+  it('prefers an explicit code and skips levels with neither code nor identifier', () => {
+    expect(frameworkLevelsOf({ identifier: 'fw', categories: [{ code: 'cuisine' }, { name: 'Ghost' }] }))
+      .toEqual([{ code: 'cuisine', name: 'cuisine' }]);
+  });
+
+  it('is empty for a framework with no levels', () => {
+    expect(frameworkLevelsOf({ identifier: 'fw' })).toEqual([]);
   });
 });
