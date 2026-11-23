@@ -26,6 +26,8 @@ export interface SkillSuggestion {
   progressPct: number;
   /** Skill CODES this path would add that the learner doesn't hold from any source. */
   newSkills: string[];
+  /** The path's competency framework: where its skills' names come from. */
+  frameworkId?: string;
   totalSkills: number;
 }
 
@@ -41,6 +43,7 @@ function fromEnrolled(summaries: PathSkillSummary[], heldCodes: ReadonlySet<stri
       progressPct: summary.progressPct,
       newSkills: splitPathSkills(summary, heldCodes).pending,
       totalSkills: summary.taughtCodes.length,
+      ...(summary.frameworkId ? { frameworkId: summary.frameworkId } : {}),
     }))
     .filter((suggestion) => suggestion.newSkills.length > 0);
 }
@@ -120,6 +123,7 @@ export function useSkillSuggestions(
           progressPct: 0,
           newSkills,
           totalSkills: taughtCodes.length,
+          ...(model.competencyFramework ? { frameworkId: model.competencyFramework } : {}),
         };
       })
       .filter((suggestion): suggestion is SkillSuggestion => suggestion !== null);

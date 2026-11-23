@@ -61,6 +61,16 @@ describe('SkillSuggestionRow', () => {
     expect(screen.queryByText('hand-hygiene')).not.toBeInTheDocument();
   });
 
+  it('names each skill from its own path\'s framework', () => {
+    const nameOf = vi.fn((code: string, frameworkId?: string) => `${frameworkId}:${code}`);
+    render(
+      <MemoryRouter>
+        <SkillSuggestionRow suggestions={[suggestion({ pathId: 'p1', newSkills: ['fe_sk_flex'], frameworkId: 'fw_fe' })]} nameOf={nameOf} />
+      </MemoryRouter>
+    );
+    expect(screen.getByText('fw_fe:fe_sk_flex')).toBeInTheDocument();
+  });
+
   it('collapses extra skills into a "+N more" label beyond the preview count', () => {
     renderRow([suggestion({ pathId: 'p1', newSkills: ['SQL', 'Python', 'ML', 'Cloud', 'Docker'] })]);
     expect(screen.getByText(/mySkills.moreSkills/)).toHaveTextContent('mySkills.moreSkills {"count":2}');

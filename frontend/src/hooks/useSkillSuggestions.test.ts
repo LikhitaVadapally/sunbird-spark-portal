@@ -122,6 +122,24 @@ describe('useSkillSuggestions', () => {
     });
   });
 
+  // The card names a suggested path's skills from that path's own framework.
+  it('records each discovered path\'s competency framework', async () => {
+    hierarchyByCollectionId.set('disc-1', {
+      ...pathHierarchyRoot('disc-1', 'Frontend Basics', ['fe_sk_flex']),
+      competencyFramework: 'frontend_skills_v2',
+    } as unknown as HierarchyContentNode);
+    mockUseContentSearch.mockReturnValue({
+      data: { data: { content: [{ identifier: 'disc-1', name: 'Frontend Basics' }] } },
+      isLoading: false,
+    });
+    const { result } = renderHook(() => useSkillSuggestions([], [], NONE), { wrapper });
+    await waitFor(() => {
+      expect(result.current.suggestions).toEqual([
+        expect.objectContaining({ pathId: 'disc-1', frameworkId: 'frontend_skills_v2' }),
+      ]);
+    });
+  });
+
   it('fetches hierarchies for discovered unenrolled paths and surfaces their new skills', async () => {
     hierarchyByCollectionId.set('disc-1', pathHierarchyRoot('disc-1', 'Cloud Basics', ['cloud', 'networking']));
     mockUseContentSearch.mockReturnValue({

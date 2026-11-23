@@ -20,6 +20,10 @@ vi.mock('@/hooks/useToast', () => ({ useToast: () => ({ toast: mockToast }) }));
 
 vi.mock('@/hooks/useMySkills', () => ({ useMySkills: vi.fn() }));
 vi.mock('@/hooks/useSkillSuggestions', () => ({ useSkillSuggestions: vi.fn() }));
+// Names for suggested paths' frameworks: unresolved here, so the page's own names are used.
+vi.mock('@/hooks/useSkillProfile', () => ({
+  useSkillLabels: () => ({ labelOf: (code: string) => ({ name: code, resolved: false }), isLoading: false }),
+}));
 // The section has its own tests; here only its placement matters.
 vi.mock('@/components/mySkills/RoleReadinessSection', () => ({
   RoleReadinessSection: () => <div data-testid="role-readiness-section" />,

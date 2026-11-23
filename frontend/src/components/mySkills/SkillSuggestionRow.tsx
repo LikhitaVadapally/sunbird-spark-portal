@@ -7,7 +7,8 @@ import type { SkillSuggestion } from '@/hooks/useSkillSuggestions';
 interface SkillSuggestionRowProps {
   suggestions: SkillSuggestion[];
   /** Display name for a skill code. */
-  nameOf: (code: string) => string;
+  /** Names a skill code, preferring the given framework (the path's own). */
+  nameOf: SkillNameOf;
 }
 
 const CHIP_PREVIEW_COUNT = 3;
@@ -21,7 +22,9 @@ function SkillChip({ skill }: { skill: string }) {
   );
 }
 
-function SuggestionCard({ suggestion, nameOf }: { suggestion: SkillSuggestion; nameOf: (code: string) => string }) {
+type SkillNameOf = (code: string, frameworkId?: string) => string;
+
+function SuggestionCard({ suggestion, nameOf }: { suggestion: SkillSuggestion; nameOf: SkillNameOf }) {
   const { t } = useAppI18n();
   const { pathId, pathName, contextId, source, progressPct, newSkills } = suggestion;
   const previewSkills = newSkills.slice(0, CHIP_PREVIEW_COUNT);
@@ -41,7 +44,7 @@ function SuggestionCard({ suggestion, nameOf }: { suggestion: SkillSuggestion; n
 
       <div className="flex flex-wrap gap-1.5">
         {previewSkills.map((skill) => (
-          <SkillChip key={skill} skill={nameOf(skill)} />
+          <SkillChip key={skill} skill={nameOf(skill, suggestion.frameworkId)} />
         ))}
         {extraCount > 0 && (
           <span className="whitespace-nowrap text-xs font-medium text-sunbird-gray-75">

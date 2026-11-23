@@ -3,6 +3,7 @@ import { useAppI18n } from '@/hooks/useAppI18n';
 import useImpression from '@/hooks/useImpression';
 import { useMySkills } from '@/hooks/useMySkills';
 import { useSkillSuggestions } from '@/hooks/useSkillSuggestions';
+import { useSkillLabels } from '@/hooks/useSkillProfile';
 import PageLoader from '@/components/common/PageLoader';
 import { MySkillsHero } from '@/components/mySkills/MySkillsHero';
 import { MySkillsControls } from '@/components/mySkills/MySkillsControls';
@@ -51,6 +52,17 @@ const MySkills = () => {
 
   const enrolledPathIds = useMemo(() => entries.map((entry) => entry.path.pathId), [entries]);
   const { suggestions } = useSkillSuggestions(summaries, enrolledPathIds, heldCodes);
+  // A suggested path may use a framework the learner has no skills or paths in yet, so the page's
+  // names may not cover it: load its framework's names and try them first.
+  const suggestionFrameworkIds = useMemo(
+    () => [...new Set(suggestions.map((s) => s.frameworkId).filter((id): id is string => Boolean(id)))],
+    [suggestions]
+  );
+  const { labelOf: suggestionLabelOf } = useSkillLabels(suggestionFrameworkIds);
+  const suggestionNameOf = (code: string, frameworkId?: string) => {
+    const own = suggestionLabelOf(code, frameworkId);
+    return own.resolved ? own.name : nameOf(code, frameworkId);
+  };
 
   const groupOptions = useMemo(
     () =>
@@ -147,7 +159,7 @@ const MySkills = () => {
           </aside>
 
           <div className="flex min-w-0 flex-col gap-4">
-            {!labelsLoading && <SkillSuggestionRow suggestions={suggestions} nameOf={nameOf} />}
+            {!labelsLoading && <SkillSuggestionRow suggestions={suggestions} nameOf={suggestionNameOf} />}
             <MySkillsControls
               view={view}
               onViewChange={(next) => {
