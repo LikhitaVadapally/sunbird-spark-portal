@@ -19,19 +19,50 @@ interface LeafTermWire {
 
 type CategoryWire = { code?: string; index?: number; terms?: LeafTermWire[] };
 
-/** The way down from a term: `children`, else associations that leave its own category. */
+/**
+ * The way down from a term: `children`, else associations. Term sheets link levels by association,
+ * in either direction: older frameworks point a parent at its children, the term sheet upload points
+ * each child at its parent. Which end is the parent comes from the level order, not the direction.
+ */
 function treeOf(categories: CategoryWire[]) {
   const index = new Map<string, LeafTermWire>();
-  categories.forEach((c) => (c.terms ?? []).forEach((t) => t.identifier && index.set(t.identifier, t)));
+  const rank = new Map<string, number>();
+  ordered(categories).forEach((c, r) =>
+    (c.terms ?? []).forEach((t) => {
+      if (!t.identifier) return;
+      index.set(t.identifier, t);
+      rank.set(t.identifier, r);
+    })
+  );
   const resolve = (t: LeafTermWire) => (t.identifier && index.get(t.identifier)) || t;
+  // A level is below another when it comes later; without a known level, any other category counts.
+  const isBelow = (from: LeafTermWire, toId: string, toCategory?: string) => {
+    const own = from.identifier ? rank.get(from.identifier) : undefined;
+    const other = rank.get(toId);
+    if (own === undefined || other === undefined) return Boolean(toCategory) && toCategory !== from.category;
+    return other > own;
+  };
+  // Child -> parent links, turned round so a parent can find its children.
+  const linkedUp = new Map<string, LeafTermWire[]>();
+  index.forEach((t) =>
+    (t.associations ?? []).forEach((a) => {
+      if (!a.identifier || !index.has(a.identifier)) return;
+      const parent = index.get(a.identifier) as LeafTermWire;
+      if (!isBelow(parent, t.identifier as string)) return;
+      linkedUp.set(a.identifier, [...(linkedUp.get(a.identifier) ?? []), t]);
+    })
+  );
   const descendants = (t: LeafTermWire, seen: Set<string>): LeafTermWire[] => {
     if (t.children?.length) return t.children.map(resolve);
-    const own = t.category ?? '';
-    return (t.associations ?? []).flatMap((a) => {
-      if (!a.category || a.category === own || !a.identifier || seen.has(a.identifier)) return [];
+    const down = (t.associations ?? []).flatMap((a) => {
+      if (!a.identifier || seen.has(a.identifier) || !isBelow(t, a.identifier, a.category)) return [];
       const target = index.get(a.identifier);
       return target ? [target] : [];
     });
+    const up = (t.identifier ? linkedUp.get(t.identifier) ?? [] : []).filter(
+      (c) => !c.identifier || !seen.has(c.identifier)
+    );
+    return [...new Set([...down, ...up])];
   };
   return { descendants };
 }

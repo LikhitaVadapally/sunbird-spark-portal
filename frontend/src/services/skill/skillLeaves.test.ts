@@ -150,4 +150,31 @@ describe('frameworkVocabulary', () => {
     const v = frameworkVocabulary('fw', orphan);
     expect(v.leaves.dose).toEqual({ code: 'dose', name: 'Dosage', path: [{ code: 'comp', name: 'Comp', depth: 0 }] });
   });
+
+  // The term sheet upload links each term to its PARENT (child -> parent), and the read can omit
+  // the categories' codes. Grouping must still come out top-down.
+  it('places skills whose links point up at their parent, in a four-level framework', () => {
+    const up = fw([
+      { index: 4, terms: [
+        { identifier: 'fw_skill_flex', code: 'flex', name: 'Use Flexbox', category: 'skill', associations: [{ identifier: 'fw_competency_css', category: 'competency' }] },
+        { identifier: 'fw_skill_grid', code: 'grid', name: 'Use CSS Grid', category: 'skill', associations: [{ identifier: 'fw_competency_css', category: 'competency' }] },
+      ] },
+      { index: 1, terms: [{ identifier: 'fw_track_fund', code: 'fund', name: 'Web Fundamentals', category: 'track' }] },
+      { index: 3, terms: [{ identifier: 'fw_competency_css', code: 'css', name: 'CSS Layout', category: 'competency', associations: [{ identifier: 'fw_area_hc', category: 'area' }] }] },
+      { index: 2, terms: [{ identifier: 'fw_area_hc', code: 'hc', name: 'HTML and CSS', category: 'area', associations: [{ identifier: 'fw_track_fund', category: 'track' }] }] },
+    ]);
+    const v = frameworkVocabulary('fw', up);
+    expect(v.leaves.flex?.path.map((p) => p.name)).toEqual(['Web Fundamentals', 'HTML and CSS', 'CSS Layout']);
+    expect(v.leaves.grid?.path[0]?.code).toBe('fund');
+    expect(Object.keys(v.leaves).sort()).toEqual(['flex', 'grid']);
+  });
+
+  it('does not loop when a parent and child link to each other', () => {
+    const both = fw([
+      { index: 1, terms: [{ identifier: 'c1', code: 'comp', name: 'Comp', category: 'competency', associations: [{ identifier: 's1', category: 'skill' }] }] },
+      { index: 2, terms: [{ identifier: 's1', code: 'dose', name: 'Dosage', category: 'skill', associations: [{ identifier: 'c1', category: 'competency' }] }] },
+    ]);
+    expect(frameworkVocabulary('fw', both).leaves.dose?.path).toEqual([{ code: 'comp', name: 'Comp', depth: 0 }]);
+  });
 });
+
