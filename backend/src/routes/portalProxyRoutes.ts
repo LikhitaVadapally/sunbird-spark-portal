@@ -89,6 +89,13 @@ router.delete('/competency-framework/v3/retire/:identifier', ...frameworkAdmin);
 router.post('/framework/v3/term/validate', ...frameworkAdmin);
 router.post('/framework/v3/term/commit', ...frameworkAdmin);
 router.get('/framework/v3/term/download/:framework', ...frameworkAdmin);
+// Not called by the portal, but Kong exposes them to the portal's consumer: guarded so the
+// catch-all can't hand them to any logged-in user. term/update is POST (bulk) and PATCH (one term).
+router.post('/framework/v3/term/update', ...frameworkAdmin);
+router.patch('/framework/v3/term/update/:termId', ...frameworkAdmin);
+router.post('/framework/v3/publish/:identifier', ...frameworkAdmin);
+router.post('/framework/v3/review/:identifier', ...frameworkAdmin);
+router.post('/framework/v3/reject/:identifier', ...frameworkAdmin);
 
 const recaptchaProtectedRoutes: string[] = [
     '/user/v1/exists/email/:emailId',

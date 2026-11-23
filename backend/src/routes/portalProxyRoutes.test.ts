@@ -192,6 +192,11 @@ describe('portalProxyRoutes - competency framework admin routes', () => {
         ['post', '/portal/framework/v3/term/validate'],
         ['post', '/portal/framework/v3/term/commit'],
         ['get', '/portal/framework/v3/term/download/fw1'],
+        ['post', '/portal/framework/v3/term/update'],
+        ['patch', '/portal/framework/v3/term/update/t1'],
+        ['post', '/portal/framework/v3/publish/fw1'],
+        ['post', '/portal/framework/v3/review/fw1'],
+        ['post', '/portal/framework/v3/reject/fw1'],
     ];
 
     it.each(adminRoutes)('%s %s reaches kongProxy for an ORG_ADMIN', async (method, url) => {
