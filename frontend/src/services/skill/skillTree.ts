@@ -1,4 +1,4 @@
-/** A term in the nested `competency` category of a taxonomy framework read. */
+/** A term of a competency framework read; terms may nest through `children`. */
 export interface TreeTermWire {
   code?: string;
   name?: string;
@@ -10,12 +10,12 @@ export interface FrameworkCategoryLike {
   terms?: TreeTermWire[];
 }
 
-/** A taxonomy framework read, in either the enveloped or the adapter-unwrapped shape. */
-export interface TaxonomyFrameworkBody {
+/** A competency framework read (`/competency-framework/v3/read`), enveloped or adapter-unwrapped. */
+export interface FrameworkReadBody {
   framework?: { categories?: FrameworkCategoryLike[] };
 }
-export interface TaxonomyFrameworkResponse extends TaxonomyFrameworkBody {
-  result?: TaxonomyFrameworkBody;
+export interface FrameworkReadResponse extends FrameworkReadBody {
+  result?: FrameworkReadBody;
 }
 
 /** One ancestor on a leaf's path, outermost first. */
@@ -39,21 +39,15 @@ export interface SkillVocabulary {
   labels: Record<string, string>;
   /** Leaf code -> its resolved position in the tree. */
   leaves: Record<string, LeafSkill>;
-  /** Lower-cased skill name -> code, for content tagged by NAME (USF). See `toSkillCode`. */
-  codeByName: Record<string, string>;
   /**
-   * The content field this framework's skill tags live in: a competency framework's last
-   * category code (`skill`, `cuisine`, ...), as lern reads it. Unset for a taxonomy framework,
-   * whose content uses `skill`.
+   * The content field this framework's skill tags live in: its last category's code (`skill`,
+   * `cuisine`, ...), as lern reads it. Unset when the framework has no categories.
    */
   skillField?: string;
 }
 
-/** Categories whose terms are skills. USF's `industry`/`domain` terms must never match a tag. */
-const SKILL_CATEGORIES = new Set(['skill', 'competency']);
-
 /**
- * Categories out of a taxonomy framework read, whichever shape arrives.
+ * Categories out of a framework read, whichever shape arrives.
  *
  * `AxiosAdapter.mapResponse` strips `result` before a caller sees the body, so the
  * unwrapped form is the normal one. Reading `result.framework` returned undefined and
@@ -61,77 +55,9 @@ const SKILL_CATEGORIES = new Set(['skill', 'competency']);
  * rather than at each call site.
  */
 export function frameworkCategories(
-  body: TaxonomyFrameworkResponse | undefined | null
+  body: FrameworkReadResponse | undefined | null
 ): FrameworkCategoryLike[] {
   return body?.framework?.categories ?? body?.result?.framework?.categories ?? [];
-}
-
-/**
- * Walks the nested `competency` category into a flat leaf index.
- *
- * WHY A RECURSIVE WALK: v2 sets a three-tier minimum and NO maximum, and does not require
- * uniform leaf depth - one branch may stop at tier 3 while its neighbour goes to tier 5.
- * Fixed nesting would silently drop the deeper branches.
- *
- * A leaf is a term with no children, which is the only thing tagged, required by a role or
- * held by a learner. Interior terms are navigation only, so they contribute labels and a
- * path but never appear as skills.
- *
- * `seen` guards against a cycle in the authored data: `children` is a graph relation, and a
- * term that (directly or transitively) contains itself would otherwise recurse until the
- * stack blows - taking the whole profile page with it.
- */
-export function buildSkillVocabulary(
-  frameworkId: string,
-  body: TaxonomyFrameworkResponse | undefined | null
-): SkillVocabulary {
-  const labels: Record<string, string> = {};
-  const leaves: Record<string, LeafSkill> = {};
-  const named: Array<[string, string]> = [];
-  const categories = frameworkCategories(body);
-
-  categories.forEach((category) => {
-    const isSkill = SKILL_CATEGORIES.has((category.code ?? '').toLowerCase());
-    (category.terms ?? []).forEach((term) => collect(term, [], new Set<string>(), isSkill));
-  });
-
-  function collect(term: TreeTermWire, ancestors: TierNode[], seen: Set<string>, isSkill: boolean): void {
-    const code = term.code;
-    if (!code || seen.has(code)) return;
-    const name = term.name ?? code;
-    labels[code] = name;
-    if (isSkill && term.name) named.push([term.name, code]);
-
-    const children = term.children ?? [];
-    if (children.length === 0) {
-      // only leaves are skills
-      leaves[code] = { code, name, path: ancestors };
-      return;
-    }
-    const nextSeen = new Set(seen);
-    nextSeen.add(code);
-    const nextAncestors = [...ancestors, { code, name, depth: ancestors.length }];
-    children.forEach((child) => collect(child, nextAncestors, nextSeen, isSkill));
-  }
-
-  return { frameworkId, labels, leaves, codeByName: buildCodeByName(named) };
-}
-
-/**
- * Lower-cased skill name -> code, for content tagged by name (USF). A name two codes share is
- * ambiguous, so it maps to neither.
- */
-export function buildCodeByName(named: Iterable<[name: string, code: string]>): Record<string, string> {
-  const names: Record<string, string | null> = {};
-  for (const [name, code] of named) {
-    const key = name.trim().toLowerCase();
-    names[key] = names[key] === undefined || names[key] === code ? code : null;
-  }
-  const codeByName: Record<string, string> = {};
-  Object.entries(names).forEach(([key, code]) => {
-    if (code) codeByName[key] = code;
-  });
-  return codeByName;
 }
 
 /**

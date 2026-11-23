@@ -286,10 +286,10 @@ describe('CollectionOverview', () => {
       expect(screen.queryByTestId('course-skills')).not.toBeInTheDocument();
     });
 
-    it("lists the course's skill codes, falling back to se_skills, with its framework", () => {
+    it("lists the course's skill codes, falling back to se_skills, with its skill framework", () => {
       const withSkills: CollectionData = {
         ...mockCollectionData,
-        hierarchyRoot: { ...mockCollectionData.hierarchyRoot, se_skills: ['hand-hygiene'], framework: 'nursing_fw' },
+        hierarchyRoot: { ...mockCollectionData.hierarchyRoot, se_skills: ['hand-hygiene'], competencyFramework: 'nursing_fw' },
       };
       render(<CollectionOverview collectionData={withSkills} />);
       expect(screen.getByTestId('course-skills')).toHaveTextContent('hand-hygiene');

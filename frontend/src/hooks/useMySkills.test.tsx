@@ -31,8 +31,6 @@ vi.mock('./useViewerSummary', () => ({
 }));
 
 let mockHeld: HeldSkill[] = [];
-// USF names -> codes, as the framework vocabulary would resolve them.
-const USF_CODES: Record<string, string> = { 'python programming': 'pp', 'java programming': 'jp', javascript: 'js' };
 let mockProfileError = false;
 vi.mock('./useSkillProfile', () => ({
   useSkillProfile: () => ({
@@ -44,7 +42,6 @@ vi.mock('./useSkillProfile', () => ({
   }),
   useSkillLabels: () => ({
     labelOf: (code: string) => ({ name: code, resolved: false }),
-    codeOf: (tag: string) => USF_CODES[tag.toLowerCase()] ?? tag,
     isLoading: false,
   }),
 }));
@@ -147,19 +144,6 @@ describe('useMySkills', () => {
     expect(result.current.entries[0]?.summary?.taughtCodes.length).toBeGreaterThan(0);
   });
 
-  // USF paths are tagged by NAME; the profile holds the CODE the skill service awarded.
-  it('matches a USF path tag to the held code, so an earned skill is gained, not pending', async () => {
-    mockCourses = [learningPathEnrollment({})];
-    mockHeld = [{ skillId: 'pp', frameworkId: 'USF', sourceType: 'COURSE', evidence: [] }];
-    const { result } = renderHook(() => useMySkills(), { wrapper });
-    await waitFor(() => expect(result.current.analyzedCount).toBe(1));
-
-    expect(result.current.entries[0]?.summary?.taughtCodes).toEqual(expect.arrayContaining(['pp', 'jp', 'js']));
-    const pp = result.current.skills.filter((s) => s.code === 'pp');
-    expect(pp).toEqual([expect.objectContaining({ gained: true })]);
-    expect(result.current.skills.some((s) => s.code === 'Python Programming')).toBe(false);
-  });
-
   it('names course evidence by the course, not its id', () => {
     mockCourses = [
       learningPathEnrollment({
@@ -184,8 +168,9 @@ describe('useMySkills', () => {
     mockCourses = [learningPathEnrollment({})];
     mockHeld = [
       {
-        skillId: 'jp',
-        frameworkId: 'USF',
+        // The fixture path tags its courses with this value; a held skill matches on it as-is.
+        skillId: 'Java Programming',
+        frameworkId: 'fw',
         sourceType: 'ASSESSMENT',
         evidence: [{ evidenceId: 'e1', sourceType: 'ASSESSMENT', sourceId: 'do_2146316303263006721126', revoked: false }],
       },
@@ -193,7 +178,7 @@ describe('useMySkills', () => {
     const { result } = renderHook(() => useMySkills(), { wrapper });
     await waitFor(() => expect(result.current.analyzedCount).toBe(1));
 
-    const jp = result.current.skills.find((s) => s.code === 'jp');
+    const jp = result.current.skills.find((s) => s.code === 'Java Programming');
     expect(jp?.evidence[0]).toEqual(
       expect.objectContaining({
         sourceName: 'LP-Course-1-JP-PP',

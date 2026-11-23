@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { SkillService } from './SkillService';
 import { normaliseAuthoredRoles, normaliseRoleDiff } from './skillMappers';
 import { groupLeafOptions, filterOptionGroups, toRoleCode } from './roleSkillOptions';
-import { buildSkillVocabulary } from './skillTree';
+import { frameworkVocabulary } from './skillLeaves';
 import { IHttpClient, init } from '../../lib/http-client';
 
 describe('SkillService role authoring', () => {
@@ -68,7 +68,7 @@ describe('normaliseRoleDiff', () => {
 });
 
 describe('groupLeafOptions', () => {
-  const vocabulary = buildSkillVocabulary('fw', {
+  const vocabulary = frameworkVocabulary('fw', {
     framework: {
       categories: [{
         code: 'competency',

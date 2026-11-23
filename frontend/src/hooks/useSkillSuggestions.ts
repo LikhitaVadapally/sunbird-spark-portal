@@ -3,11 +3,9 @@ import { useQueries } from '@tanstack/react-query';
 import { toQuerySlices } from './querySlices';
 import { useContentSearch } from './useContent';
 import { collectionHierarchyQueryOptions } from './useCollection';
-import { useSkillLabels } from './useSkillProfile';
 import { parseLearningPath } from '../services/learningPath/learningPathMapper';
 import { useSkillFields } from './useSkillFields';
 import { derivePathSkillCodes, splitPathSkills } from '../services/learningPath/skillAggregation';
-import { withSkillCodes } from '../services/skill/skillCodes';
 import type { PathSkillSummary } from '../services/learningPath/skillAggregation';
 import type { CollectionData } from '../types/collectionTypes';
 
@@ -103,20 +101,13 @@ export function useSkillSuggestions(
       }),
     [hierarchyQueries, fieldOf]
   );
-  const candidateFrameworkIds = useMemo(
-    () => candidateModels.map((m) => m?.competencyFramework).filter((id): id is string => Boolean(id)),
-    [candidateModels]
-  );
-  const { codeOf } = useSkillLabels(candidateFrameworkIds);
 
   const discoverSuggestions = useMemo(() => {
     return candidates
       .map((item, i): SkillSuggestion | null => {
-        const parsed = candidateModels[i];
-        if (!parsed) return null;
+        const model = candidateModels[i];
+        if (!model) return null;
 
-        // USF paths are tagged by skill NAME; `heldCodes` are codes.
-        const model = withSkillCodes(parsed, codeOf);
         // Nothing is finished in a path the learner has not joined, so all of it is still to do.
         const { taughtCodes } = derivePathSkillCodes(model, NOTHING_FINISHED);
         const newSkills = taughtCodes.filter((code) => !heldCodes.has(code));
@@ -132,7 +123,7 @@ export function useSkillSuggestions(
         };
       })
       .filter((suggestion): suggestion is SkillSuggestion => suggestion !== null);
-  }, [candidates, candidateModels, codeOf, heldCodes]);
+  }, [candidates, candidateModels, heldCodes]);
 
   const suggestions = useMemo(() => {
     const combined = [...enrolledSuggestions, ...discoverSuggestions];

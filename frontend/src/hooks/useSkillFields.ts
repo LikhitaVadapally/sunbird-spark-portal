@@ -4,7 +4,8 @@ import { useSkillVocabularies } from './useSkillProfile';
 /**
  * Framework id -> the content field its skill tags live in (`skill`, `cuisine`, ...), from the
  * same cached framework reads as skill names (`useSkillVocabularies`), so no extra request. A
- * framework still loading, unknown, or a taxonomy one maps to undefined: callers then read `skill`.
+ * framework still loading, unknown, or not a competency framework maps to undefined: callers then
+ * read `skill`.
  */
 export function useSkillFields(frameworkIds: Array<string | undefined>): {
   fieldOf: (frameworkId: string | undefined) => string | undefined;

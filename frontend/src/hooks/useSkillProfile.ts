@@ -6,15 +6,10 @@ import {
   skillService,
   normaliseProfile,
   normaliseFrameworkMeta,
-  buildSkillVocabulary,
   resolveSkillLabel,
-  toSkillCode,
-  type CodeOf,
   type SkillLabel,
   type SkillVocabulary,
-  type TaxonomyFrameworkResponse,
 } from '@/services/skill';
-import { FrameworkService } from '@/services/FrameworkService';
 import { frameworkVocabulary } from '@/services/skill/skillLeaves';
 import {
   FRAMEWORK_STALE_MS,
@@ -22,10 +17,8 @@ import {
   readCompetencyFramework,
 } from '@/services/skill/competencyFrameworkRead';
 import { useUserId } from './useAuthInfo';
-import { toQuerySlices } from './querySlices';
+import { toQuerySlices, type QuerySlice } from './querySlices';
 import type { CompetencyFrameworkMeta, HeldSkill } from '@/types/skillServiceTypes';
-
-const frameworkService = new FrameworkService();
 
 /**
  * Distinct, sorted ids that keep their identity while the CONTENT is unchanged. Callers pass a fresh
@@ -39,26 +32,33 @@ function useStableIds(frameworkIds: string[]): string[] {
 /** Cache key for a framework's roles (lern `role/list`); role authoring invalidates it. */
 export const competencyRolesKey = (frameworkId: string) => ['competencyRoles', frameworkId] as const;
 
-/**
- * A framework's names and tree, whichever kind it is. `/framework/v1/read` serves the older
- * taxonomy frameworks (e.g. USF) but answers 404 for `CompetencyFramework` objects, which only
- * `/competency-framework/v3/read` serves - so a 404 falls back to that read. The id alone doesn't
- * say which kind it is. The competency read goes through the shared cache entry, so the role
- * editor's read of the same framework is reused.
- */
+/** A competency framework's names and tree, through the read cache shared with the role editor. */
 async function readSkillVocabulary(queryClient: QueryClient, id: string): Promise<SkillVocabulary> {
-  try {
-    return buildSkillVocabulary(id, (await frameworkService.read<TaxonomyFrameworkResponse>(id)).data);
-  } catch (err) {
-    if ((err as { status?: number }).status !== 404) throw err;
-    const body = await queryClient.fetchQuery({
-      queryKey: competencyFrameworkReadKey(id),
-      queryFn: () => readCompetencyFramework(id),
-      staleTime: FRAMEWORK_STALE_MS,
-    });
-    return frameworkVocabulary(id, body);
-  }
+  const body = await queryClient.fetchQuery({
+    queryKey: competencyFrameworkReadKey(id),
+    queryFn: () => readCompetencyFramework(id),
+    staleTime: FRAMEWORK_STALE_MS,
+  });
+  return frameworkVocabulary(id, body);
 }
+
+/**
+ * One skill-vocabulary query per framework id. An id that isn't a competency framework fails its
+ * read (404, not retried) and settles as an error: its skills keep their codes as names.
+ */
+function useVocabularyQueries(ids: string[]): Array<QuerySlice<SkillVocabulary>> {
+  const queryClient = useQueryClient();
+  return useQueries({
+    queries: ids.map((id) => ({
+      queryKey: ['skillVocabulary', id],
+      queryFn: () => readSkillVocabulary(queryClient, id),
+      enabled: Boolean(id),
+      staleTime: FRAMEWORK_STALE_MS,
+    })),
+    combine: toQuerySlices<SkillVocabulary>,
+  });
+}
+
 const NO_SKILLS: HeldSkill[] = [];
 
 /**
@@ -94,29 +94,18 @@ export function useSkillProfile() {
 }
 
 /**
- * The skill tree of each framework, as a code -> name/parent index.
+ * The skill tree of each competency framework, as a code -> name/parent index.
  *
- * Display names and the parent term ("Infection Prevention") live only on the taxonomy
- * framework's nested terms, so this is the one read the learner side needs. Split out of
- * `useSkillFrameworks`, which loads only roles. Older taxonomy frameworks and new
- * `CompetencyFramework` objects are both read - see `readSkillVocabulary`.
+ * Display names and the parent term ("Infection Prevention") live only on the framework's terms,
+ * so this is the one read the learner side needs. Split out of `useSkillFrameworks`, which loads
+ * only roles.
  */
 export function useSkillVocabularies(frameworkIds: string[]): {
   vocabularies: Record<string, SkillVocabulary | undefined>;
   isLoading: boolean;
 } {
-  const queryClient = useQueryClient();
   const ids = useStableIds(frameworkIds);
-
-  const treeQueries = useQueries({
-    queries: ids.map((id) => ({
-      queryKey: ['skillVocabulary', id],
-      queryFn: () => readSkillVocabulary(queryClient, id),
-      enabled: Boolean(id),
-      staleTime: FRAMEWORK_STALE_MS,
-    })),
-    combine: toQuerySlices<SkillVocabulary>,
-  });
+  const treeQueries = useVocabularyQueries(ids);
 
   const vocabularies = useMemo(() => {
     const out: Record<string, SkillVocabulary | undefined> = {};
@@ -138,8 +127,6 @@ export function useSkillVocabularies(frameworkIds: string[]): {
  */
 export function useSkillLabels(frameworkIds: string[]): {
   labelOf: (code: string, frameworkId?: string) => SkillLabel;
-  /** Content tag -> the code the profile stores; a USF name tag resolves to its code. */
-  codeOf: CodeOf;
   isLoading: boolean;
 } {
   const { vocabularies, isLoading } = useSkillVocabularies(frameworkIds);
@@ -147,11 +134,7 @@ export function useSkillLabels(frameworkIds: string[]): {
     (code: string, frameworkId?: string) => resolveSkillLabel(Object.values(vocabularies), code, frameworkId),
     [vocabularies]
   );
-  const codeOf = useCallback(
-    (tag: string, frameworkId?: string) => toSkillCode(Object.values(vocabularies), tag, frameworkId),
-    [vocabularies]
-  );
-  return { labelOf, codeOf, isLoading };
+  return { labelOf, isLoading };
 }
 
 /**

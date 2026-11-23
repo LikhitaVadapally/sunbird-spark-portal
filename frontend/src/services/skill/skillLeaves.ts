@@ -1,9 +1,8 @@
 import {
-  buildCodeByName,
   frameworkCategories,
   type SkillVocabulary,
   type TierNode,
-  type TaxonomyFrameworkResponse,
+  type FrameworkReadResponse,
 } from './skillTree';
 
 /** A term as the competency framework read returns it; only the fields the walks need. */
@@ -50,7 +49,7 @@ function ordered(categories: CategoryWire[]): CategoryWire[] {
  * (lern `CompetencyFrameworkUtil.parseSkillField`). `skill` for most frameworks, but an admin can
  * name the last level anything, e.g. `cuisine`.
  */
-export function frameworkSkillField(body: TaxonomyFrameworkResponse | undefined | null): string | undefined {
+export function frameworkSkillField(body: FrameworkReadResponse | undefined | null): string | undefined {
   const cats = ordered(frameworkCategories(body) as CategoryWire[]);
   return cats[cats.length - 1]?.code || undefined;
 }
@@ -63,7 +62,7 @@ export function frameworkSkillField(body: TaxonomyFrameworkResponse | undefined 
  * may still nest by `children` or name a `parentCode`/`parents` in the same category; then only a
  * term nobody descends from is a skill. Categories above it are grouping only.
  */
-export function frameworkLeaves(body: TaxonomyFrameworkResponse | undefined | null): string[] {
+export function frameworkLeaves(body: FrameworkReadResponse | undefined | null): string[] {
   const cats = ordered(frameworkCategories(body) as CategoryWire[]);
   const flatten = (terms: LeafTermWire[]): LeafTermWire[] => terms.flatMap((t) => [t, ...flatten(t.children ?? [])]);
   const all = flatten(cats[cats.length - 1]?.terms ?? []);
@@ -78,16 +77,15 @@ export function frameworkLeaves(body: TaxonomyFrameworkResponse | undefined | nu
 }
 
 /**
- * Names and grouping for the role editor, from the same `/competency-framework/v3/read` response.
+ * Names and grouping of a competency framework's skills, from its `/competency-framework/v3/read`.
  *
- * `buildSkillVocabulary` reads `/framework/v1/read`, which answers 404 for `CompetencyFramework`
- * objects, and follows only `children`. Here every term contributes its authored name, and each
- * skill's path is walked from the TOP category (e.g. competency area) through associations or
- * children, so `path[0]` is the outermost tier the picker groups by.
+ * Every term contributes its authored name, and each skill's path is walked from the TOP category
+ * (e.g. competency area) through associations or children, so `path[0]` is the outermost tier the
+ * role editor's picker and the learner's skill cards group by.
  */
 export function frameworkVocabulary(
   frameworkId: string,
-  body: TaxonomyFrameworkResponse | undefined | null
+  body: FrameworkReadResponse | undefined | null
 ): SkillVocabulary {
   const categories = frameworkCategories(body) as CategoryWire[];
   const labels: Record<string, string> = {};
@@ -116,6 +114,5 @@ export function frameworkVocabulary(
   leafCodes.forEach((code) => {
     if (!leaves[code]) leaves[code] = { code, name: labels[code] ?? code, path: [] };
   });
-  const codeByName = buildCodeByName(Object.values(leaves).map(({ code, name }): [string, string] => [name, code]));
-  return { frameworkId, labels, leaves, codeByName, skillField: frameworkSkillField(body) };
+  return { frameworkId, labels, leaves, skillField: frameworkSkillField(body) };
 }

@@ -176,9 +176,8 @@ const LearningPathPage = () => {
   }
 
   if (levelId) {
-    // Skill states come from the code-converted model, so name-tagged (USF) paths match too.
-    const idx = pathSkills.model.levels.findIndex((l) => l.identifier === levelId);
-    const level = pathSkills.model.levels[idx];
+    const idx = model.levels.findIndex((l) => l.identifier === levelId);
+    const level = model.levels[idx];
     if (level) {
       return (
         <div className="flex-1 min-w-0 mx-auto max-w-[85rem] px-6 py-7">

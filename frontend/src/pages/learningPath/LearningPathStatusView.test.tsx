@@ -55,17 +55,13 @@ function buildLp(overrides: Partial<Record<string, unknown>> = {}) {
 const NAMES: Record<string, string> = { sql: 'SQL', python: 'Python' };
 
 /** Gained comes from the skill profile, not from level completion - so it is passed in. */
-function buildPathSkills(
-  held: string[] = ['sql'],
-  model = buildLp().model as UsePathSkillsResult['model'],
-): UsePathSkillsResult {
+function buildPathSkills(held: string[] = ['sql']): UsePathSkillsResult {
   const heldCodes = new Set(held);
   const skills = ['sql', 'python'].map((code) => ({
     code,
     state: heldCodes.has(code) ? ('held' as const) : ('pending' as const),
   }));
   return {
-    model,
     summary: { skills, held: held.length, total: skills.length },
     heldCodes,
     stateOf: (code) => skills.find((s) => s.code === code),
@@ -74,7 +70,7 @@ function buildPathSkills(
   };
 }
 
-function renderView(lp = buildLp(), pathSkills = buildPathSkills(['sql'], lp.model as UsePathSkillsResult['model'])) {
+function renderView(lp = buildLp(), pathSkills = buildPathSkills(['sql'])) {
   return render(
     <MemoryRouter>
       <LearningPathStatusView lp={lp} pathLink="/learning-path/lp1/batch/b1" pathSkills={pathSkills} />

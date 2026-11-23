@@ -12,7 +12,6 @@ import { buildPathSkillSummary } from '../services/learningPath/skillAggregation
 import { aggregateMySkills, buildMySkills, heldCodeSet } from '../services/skill/mySkills';
 import { indexPathNodes, withEvidenceSources } from '../services/skill/evidenceSources';
 import type { EvidenceSource } from '../services/skill/evidenceSources';
-import { withSkillCodes } from '../services/skill/skillCodes';
 import { isLearningPathCategory } from '../utils/isLearningPath';
 import type { PathSkillSummary, SkillAggregate } from '../services/learningPath/skillAggregation';
 import type { MySkillEntry } from '../services/skill/mySkills';
@@ -121,7 +120,7 @@ export function useMySkills(): UseMySkillsResult {
     ],
     [profile.frameworkIds, models]
   );
-  const { labelOf, codeOf, isLoading: labelsLoading } = useSkillLabels(frameworkIds);
+  const { labelOf, isLoading: labelsLoading } = useSkillLabels(frameworkIds);
 
   const entries = useMemo<MySkillsEntry[]>(
     () =>
@@ -133,17 +132,11 @@ export function useMySkills(): UseMySkillsResult {
           return { path, isLoading: !!query?.isLoading || summaryLoading, isError: !!query?.isError };
         }
 
-        // USF paths are tagged by skill NAME; the profile holds codes. Match on codes.
         const pathSummary = getPathSummary(summaryRecords, path.pathId, path.contextId);
-        const summary = buildPathSkillSummary(
-          withSkillCodes(model, codeOf),
-          pathSummary,
-          summaryByCollectionId,
-          path.contextId
-        );
+        const summary = buildPathSkillSummary(model, pathSummary, summaryByCollectionId, path.contextId);
         return { path, summary, isLoading: false, isError: false };
       }),
-    [paths, hierarchyQueries, models, codeOf, summaryRecords, summaryByCollectionId, summaryLoading]
+    [paths, hierarchyQueries, models, summaryRecords, summaryByCollectionId, summaryLoading]
   );
 
   const summaries = useMemo(

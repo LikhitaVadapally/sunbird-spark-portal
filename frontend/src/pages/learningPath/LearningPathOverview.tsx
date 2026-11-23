@@ -83,7 +83,7 @@ export function LearningPathOverview({
             <LedgerTable
               stateOf={enrollment.isEnrolled ? pathSkills.stateOf : undefined}
               skillName={pathSkills.name}
-              model={pathSkills.model}
+              model={model}
               levelProgress={levelProgress}
               levelStatuses={levelStatuses}
               priorProgress={priorState.progress}

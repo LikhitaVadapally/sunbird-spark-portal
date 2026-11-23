@@ -231,9 +231,9 @@ describe('parseLearningPath', () => {
     expect(model.levels[1]!.skillCodes).toEqual(['ppe-use']);
   });
 
-  it('falls back to the taxonomy framework when the path names no competency framework', () => {
+  it('takes no skill framework from the taxonomy framework', () => {
     const model = parseLearningPath({ ...LP_HIERARCHY_WITH_ASSESSMENTS, framework: 'nursing_fw' } as never);
-    expect(model.competencyFramework).toBe('nursing_fw');
+    expect(model.competencyFramework).toBeUndefined();
   });
 });
 

@@ -2,10 +2,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
-import { useSkillFrameworks, useSkillVocabularies } from './useSkillProfile';
+import { useSkillFrameworks, useSkillLabels, useSkillVocabularies } from './useSkillProfile';
 import { useFrameworkLeaves } from './useFrameworkLeaves';
 import { skillService } from '@/services/skill';
-import { FrameworkService } from '@/services/FrameworkService';
 import { CompetencyFrameworkService } from '@/services/CompetencyFrameworkService';
 
 // lern's role/list answers 404 when a framework has no roles yet; that must read as "no roles".
@@ -17,7 +16,6 @@ const httpError = (status: number) => Object.assign(new Error(`Request failed ($
 
 beforeEach(() => {
   vi.restoreAllMocks();
-  vi.spyOn(FrameworkService.prototype, 'read').mockResolvedValue({ data: {}, status: 200, headers: {} } as never);
 });
 
 describe('useSkillFrameworks with role/list', () => {
@@ -49,33 +47,35 @@ describe('useSkillFrameworks with role/list', () => {
   });
 });
 
-describe('useSkillVocabularies', () => {
-  const competencyTree = {
-    framework: {
-      categories: [
-        { code: 'competency', index: 1, terms: [{ identifier: 'c1', code: 'comp', name: 'Comp', category: 'competency', associations: [{ identifier: 's1', category: 'skill' }] }] },
-        { code: 'skill', index: 2, terms: [{ identifier: 's1', code: 'hmis', name: 'HMIS Reporting', category: 'skill' }] },
-      ],
-    },
-  };
+const competencyTree = {
+  framework: {
+    categories: [
+      { code: 'competency', index: 1, terms: [{ identifier: 'c1', code: 'comp', name: 'Comp', category: 'competency', associations: [{ identifier: 's1', category: 'skill' }] }] },
+      { code: 'skill', index: 2, terms: [{ identifier: 's1', code: 'hmis', name: 'HMIS Reporting', category: 'skill' }] },
+    ],
+  },
+};
+const competencyRead = () =>
+  vi.spyOn(CompetencyFrameworkService.prototype, 'read').mockResolvedValue({ data: competencyTree, status: 200, headers: {} } as never);
 
-  it('falls back to the competency framework read when the taxonomy read 404s', async () => {
-    vi.spyOn(FrameworkService.prototype, 'read').mockRejectedValue(httpError(404));
-    vi.spyOn(CompetencyFrameworkService.prototype, 'read').mockResolvedValue({ data: competencyTree, status: 200, headers: {} } as never);
+describe('useSkillVocabularies', () => {
+  it('reads names from the competency framework read', async () => {
+    competencyRead();
     const { result } = renderHook(() => useSkillVocabularies(['fw']), { wrapper });
     await waitFor(() => expect(result.current.vocabularies.fw).toBeDefined());
     expect(result.current.vocabularies.fw?.labels.hmis).toBe('HMIS Reporting');
-    expect(result.current.vocabularies.fw?.codeByName['hmis reporting']).toBe('hmis');
+    expect(result.current.vocabularies.fw?.skillField).toBe('skill');
   });
 
-  it('does not call the competency read for an older taxonomy framework', async () => {
-    const competencyRead = vi.spyOn(CompetencyFrameworkService.prototype, 'read');
-    const { result } = renderHook(() => useSkillVocabularies(['fw']), { wrapper });
-    await waitFor(() => expect(result.current.vocabularies.fw).toBeDefined());
-    expect(competencyRead).not.toHaveBeenCalled();
+  it('settles when a framework is not a competency framework, and names fall back to the code', async () => {
+    vi.spyOn(CompetencyFrameworkService.prototype, 'read').mockRejectedValue(httpError(404));
+    const { result } = renderHook(() => useSkillLabels(['USF']), { wrapper });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(result.current.labelOf('dv', 'USF')).toEqual({ name: 'Dv', resolved: false });
   });
 
   it('keeps the same vocabularies object across re-renders once loaded', async () => {
+    competencyRead();
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     const stable = ({ children }: { children: ReactNode }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>;
     const { result, rerender } = renderHook(() => useSkillVocabularies(['fw']), { wrapper: stable });
@@ -88,10 +88,7 @@ describe('useSkillVocabularies', () => {
   });
 
   it('reads a competency framework once for both skill names and the role editor', async () => {
-    vi.spyOn(FrameworkService.prototype, 'read').mockRejectedValue(httpError(404));
-    const competencyRead = vi
-      .spyOn(CompetencyFrameworkService.prototype, 'read')
-      .mockResolvedValue({ data: competencyTree, status: 200, headers: {} } as never);
+    const read = competencyRead();
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     const stable = ({ children }: { children: ReactNode }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>;
     const { result } = renderHook(
@@ -101,6 +98,6 @@ describe('useSkillVocabularies', () => {
     await waitFor(() => expect(result.current.names.vocabularies.fw).toBeDefined());
     await waitFor(() => expect(result.current.leaves.isLoaded).toBe(true));
     expect(result.current.leaves.leaves).toEqual(['hmis']);
-    expect(competencyRead).toHaveBeenCalledTimes(1);
+    expect(read).toHaveBeenCalledTimes(1);
   });
 });

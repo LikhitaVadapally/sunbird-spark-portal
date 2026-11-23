@@ -9,16 +9,10 @@ import {
   type RoleReadiness,
 } from '@/services/learningPath/pathSkillStatus';
 import { heldCodeSet } from '@/services/skill/mySkills';
-import { withSkillCodes } from '@/services/skill/skillCodes';
 import type { LearningPathModel } from '@/types/learningPathTypes';
 import type { ViewerSummaryRecord } from '@/types/viewerServiceTypes';
 
 export interface UsePathSkillsResult {
-  /**
-   * The path with every skill tag turned into a code. Render skill states from this model, not the
-   * raw one: a path tagged by skill name (USF) would otherwise never match the held codes.
-   */
-  model: LearningPathModel;
   summary: PathSkillSummary | undefined;
   /** Codes held from any source - the same "gained" set My Skills uses. */
   heldCodes: ReadonlySet<string>;
@@ -43,18 +37,16 @@ export interface UsePathSkillsResult {
  * certificate is held all the same, and My Skills counts it. The framework is used for names only.
  */
 export function usePathSkills(
-  rawModel: LearningPathModel,
+  model: LearningPathModel,
   summaryByCollectionId: Map<string, ViewerSummaryRecord>,
   pathSummary?: ViewerSummaryRecord
 ): UsePathSkillsResult {
   const { skills, frameworkIds, isLoading: profileLoading } = useSkillProfile();
   const ids = useMemo(
-    () => [...(rawModel.competencyFramework ? [rawModel.competencyFramework] : []), ...frameworkIds],
-    [rawModel.competencyFramework, frameworkIds]
+    () => [...(model.competencyFramework ? [model.competencyFramework] : []), ...frameworkIds],
+    [model.competencyFramework, frameworkIds]
   );
-  const { labelOf, codeOf, isLoading: labelsLoading } = useSkillLabels(ids);
-  // USF paths are tagged by skill NAME; the profile holds codes. Everything below matches on codes.
-  const model = useMemo(() => withSkillCodes(rawModel, codeOf), [rawModel, codeOf]);
+  const { labelOf, isLoading: labelsLoading } = useSkillLabels(ids);
 
   const heldCodes = useMemo(() => heldCodeSet(skills), [skills]);
   const finishedCourseIds = useMemo(
@@ -93,5 +85,5 @@ export function usePathSkills(
     [labelOf, model.competencyFramework]
   );
 
-  return { model, summary, heldCodes, stateOf, name, role, isLoading: profileLoading || labelsLoading || roleLoading };
+  return { summary, heldCodes, stateOf, name, role, isLoading: profileLoading || labelsLoading || roleLoading };
 }

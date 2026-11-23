@@ -1,4 +1,3 @@
-import type { UsePathSkillsResult } from '@/hooks/usePathSkills';
 import { createRoot } from 'react-dom/client';
 import { MemoryRouter } from 'react-router-dom';
 import './configs/i18n';
@@ -68,7 +67,6 @@ const lp = {
 } as any;
 
 const pathSkills = {
-  model: lp.model as UsePathSkillsResult['model'],
   summary: {
     skills: [
       { code: 'Python Programming', state: 'held' as const },

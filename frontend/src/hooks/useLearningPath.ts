@@ -11,7 +11,6 @@ import { parseLearningPath } from '../services/learningPath/learningPathMapper';
 import { useSkillFields } from './useSkillFields';
 import { useSkillLabels } from './useSkillProfile';
 import { withSkillNames } from '../services/learningPath/skillNames';
-import { skillFrameworkOf } from '../services/learningPath/learningPathMapper';
 import {
   computeCourseProgress,
   computeLevelProgress,
@@ -57,14 +56,13 @@ export function useLearningPath(pathId: string | undefined, contextIdParam: stri
   const skillField = fieldOf(pathFrameworkId);
   // Skill names come from the framework ("French Cuisine"), as on the course page; until it loads,
   // or for a code it doesn't know, the de-slugged code is shown.
-  const nameFrameworkId = skillFrameworkOf(hierarchyData?.hierarchyRoot);
-  const { labelOf } = useSkillLabels(nameFrameworkId ? [nameFrameworkId] : NO_IDS);
+  const { labelOf } = useSkillLabels(pathFrameworkId ? [pathFrameworkId] : NO_IDS);
   const model = useMemo(
     () => withSkillNames(
       parseLearningPath(hierarchyData?.hierarchyRoot ?? null, skillField),
-      (code) => labelOf(code, nameFrameworkId).name,
+      (code) => labelOf(code, pathFrameworkId).name,
     ),
-    [hierarchyData, skillField, labelOf, nameFrameworkId]
+    [hierarchyData, skillField, labelOf, pathFrameworkId]
   );
   const pathSummary = useMemo(
     () => getPathSummary(summaryRecords, pathId, contextIdParam),

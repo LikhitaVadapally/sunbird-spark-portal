@@ -17,7 +17,7 @@ export interface SkillOptionGroup {
  *
  * `leafSkills` comes from the framework (`frameworkLeaves`, lern's own rule) and decides WHICH codes are
  * allowed: lern rejects any non-leaf, so offering only these means `rejected` should stay empty.
- * Names and grouping come from the taxonomy tree, which lern does not return.
+ * Names and grouping come from the framework's term tree, which lern does not return.
  *
  * Grouped by the outermost tier (`path[0]`). Leaves the tree does not place - e.g. the
  * three-category shape, whose terms link by association rather than `children` - fall into a

@@ -21,13 +21,11 @@ export {
 } from './roleSkillOptions';
 
 export {
-  buildSkillVocabulary,
   frameworkCategories,
   skillName,
   resolveSkillLabel,
   type SkillVocabulary,
   type SkillLabel,
-  type TaxonomyFrameworkResponse,
+  type FrameworkReadResponse,
 } from './skillTree';
 
-export { toSkillCode, withSkillCodes, type CodeOf } from './skillCodes';

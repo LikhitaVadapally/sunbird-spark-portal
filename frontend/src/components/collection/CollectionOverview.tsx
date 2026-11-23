@@ -6,7 +6,7 @@ import { ContentPlayer } from "@/components/players";
 import PageLoader from "@/components/common/PageLoader";
 import { Toaster } from "@/components/common/Toaster";
 import { CourseSkillsSection } from "./CourseSkillsSection";
-import { skillFrameworkOf, skillSource } from "@/services/learningPath/learningPathMapper";
+import { skillSource } from "@/services/learningPath/learningPathMapper";
 import { useSkillFields } from "@/hooks/useSkillFields";
 
 interface CollectionOverviewProps {
@@ -157,7 +157,7 @@ const CollectionOverview = ({
           {skillCodes.length > 0 && (
             <CourseSkillsSection
               codes={skillCodes}
-              frameworkId={skillFrameworkOf(root)}
+              frameworkId={root?.competencyFramework}
             />
           )}
 

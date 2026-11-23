@@ -1,5 +1,5 @@
 import { competencyFrameworkService } from '../CompetencyFrameworkService';
-import type { TaxonomyFrameworkResponse } from './skillTree';
+import type { FrameworkReadResponse } from './skillTree';
 
 /** A framework changes on publish, not per session; refetching on every focus only re-flashes skeletons. */
 export const FRAMEWORK_STALE_MS = 30 * 60 * 1000;
@@ -11,7 +11,7 @@ export const FRAMEWORK_STALE_MS = 30 * 60 * 1000;
  */
 export const competencyFrameworkReadKey = (frameworkId: string) => ['competencyFrameworkRead', frameworkId] as const;
 
-export async function readCompetencyFramework(frameworkId: string): Promise<TaxonomyFrameworkResponse> {
+export async function readCompetencyFramework(frameworkId: string): Promise<FrameworkReadResponse> {
   const res = await competencyFrameworkService.read(frameworkId);
-  return res.data as TaxonomyFrameworkResponse;
+  return res.data as FrameworkReadResponse;
 }

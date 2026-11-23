@@ -90,8 +90,8 @@ function unionSkills(...lists: Array<string[] | undefined>): string[] {
 }
 
 /**
- * Skill tags for display. Codes ("dosage-calculation") de-slug to "Dosage calculation"; a readable
- * taxonomy label passes through. Real names need the framework, which `withSkillNames` applies later.
+ * Skill tags for display. Codes ("dosage-calculation") de-slug to "Dosage calculation" until the
+ * framework's real names are applied by `withSkillNames`.
  */
 function displayable(codes: string[] | undefined): string[] {
   return (codes ?? []).map((c) => skillName(undefined, c));
@@ -103,20 +103,12 @@ function displayable(codes: string[] | undefined): string[] {
  * see `frameworkSkillField`). Defaults to `skill` when the framework isn't known.
  *
  * The field wins; its `se_` copy (`se_skills`) is only a fallback, NOT a union: `se_skills` is the
- * search-enriched copy of `skill`, so unioning listed every competency twice. The fallback stays
- * for older content carrying only `se_skills` (taxonomy labels).
+ * search-enriched copy of `skill`, so unioning listed every competency twice. The fallback covers a
+ * node whose own field is missing from the response but whose search copy is present.
  */
 export function skillSource(node: object, skillField = 'skill'): string[] {
   const own = list(fieldsOf(node)[skillField]);
   return own.length > 0 ? own : list(fieldsOf(node)[`se_${skillField}s`]);
-}
-
-/**
- * The framework a collection's skill tags belong to: its `competencyFramework`, else the taxonomy
- * `framework` its `skill` terms come from (content authored before `competencyFramework` existed).
- */
-export function skillFrameworkOf(root?: { competencyFramework?: string; framework?: string } | null): string | undefined {
-  return root?.competencyFramework ?? root?.framework;
 }
 
 function mapCourseNode(courseNode: HierarchyContentNode, skillField?: string): LPCourseNode {
@@ -218,7 +210,7 @@ export function parseLearningPath(
   );
   // Prefer the root's own tag: it is the authoritative union, written at publish. Fall back to the
   // children's codes for a path published before the root carried one.
-  // The root's own field only (no se_ fallback): a taxonomy label there isn't a code.
+  // The root's own field only (no se_ fallback): the authored tag is the source of truth.
   const rootCodes = list(fieldsOf(root)[skillField ?? 'skill']);
   const allSkillCodes = rootCodes.length
     ? [...new Set(rootCodes)]
@@ -239,7 +231,7 @@ export function parseLearningPath(
     allSkills,
     allSkillCodes,
     targetRole: root.targetRole,
-    competencyFramework: skillFrameworkOf(root),
+    competencyFramework: root.competencyFramework,
     courseTotal,
     leafTotal: root.leafNodesCount ?? getLeafContentIdsFromHierarchy(root).length,
   };
