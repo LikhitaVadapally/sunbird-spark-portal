@@ -45,6 +45,13 @@ export class UserManagementService {
     });
   }
 
+  /** Finds users by exact email or username. lern encrypts an `email` filter before matching. */
+  async findUsers(filters: { email: string } | { userName: string }): Promise<ApiResponse<{ response?: { content?: unknown[] } }>> {
+    return getClient().post('/user/v3/search', {
+      request: { filters, fields: ['id', 'userId', 'firstName', 'lastName', 'userName', 'maskedEmail'], limit: 2 },
+    });
+  }
+
   async getRoles(): Promise<ApiResponse<any>> {
     return getClient().get('/data/v1/role/read');
   }
