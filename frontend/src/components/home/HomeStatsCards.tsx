@@ -1,4 +1,6 @@
 import { useUserEnrolledCollections } from "@/hooks/useUserEnrolledCollections";
+import { useViewerSummary } from "@/hooks/useViewerSummary";
+import { sumOf, tallyLearning } from "@/services/learningPath/learningTally";
 import { useUserCertificates } from "@/hooks/useCertificate";
 import { useAppI18n } from "@/hooks/useAppI18n";
 
@@ -44,14 +46,11 @@ const HomeStatsCards = () => {
     const { t } = useAppI18n();
     const { data: enrolledCollections, isLoading: enrollmentsLoading } = useUserEnrolledCollections();
     const { data: certificatesData, isLoading: certificatesLoading } = useUserCertificates();
-    const courses = enrolledCollections?.data?.courses || [];
+    // Same counting as the profile tiles: each course and path once, a path's progress from Viewer.
+    const { data: summaries = [], isLoading: summariesLoading } = useViewerSummary();
+    const tally = tallyLearning(enrolledCollections?.data?.courses || [], summaries);
 
-    const isLoading = enrollmentsLoading || certificatesLoading;
-
-    // Course-level stats using course status (1 = in progress, 2 = completed)
-    const totalCourses = courses.length;
-    const coursesInProgress = courses.filter(course => course.status === 1 && !(course.completionPercentage >= 100)).length;
-    const coursesCompleted = courses.filter(course => course.status === 2 || course.completionPercentage >= 100).length;
+    const isLoading = enrollmentsLoading || certificatesLoading || summariesLoading;
 
     // Get certificate count from the certificate search API
     // The API returns an array of certificates directly
@@ -59,34 +58,41 @@ const HomeStatsCards = () => {
         ? certificatesData.data.length
         : 0;
 
-    const statsData = [
+    const pad = (n: number) => (n === 0 ? '0' : n.toString().padStart(2, '0'));
+    const split = (k: keyof typeof tally) =>
+        t("statsCards.split", { paths: tally[k].paths, courses: tally[k].courses });
+
+    const statsData: Array<{ id: string; value: string; label: string; sub?: string; bgColor: string; iconBg: string; icon: typeof TotalContentsIcon }> = [
         {
             id: "total",
-            value: totalCourses === 0 ? '0' : totalCourses.toString().padStart(2, '0'),
-            label: t("statsCards.totalCourses"),
+            value: pad(sumOf(tally.total)),
+            label: t("statsCards.totalLearning"),
+            sub: split("total"),
             bgColor: "bg-sunbird-blue-light",
             iconBg: "hsl(var(--sunbird-blue-medium))",
             icon: TotalContentsIcon,
         },
         {
             id: "progress",
-            value: coursesInProgress === 0 ? '0' : coursesInProgress.toString().padStart(2, '0'),
+            value: pad(sumOf(tally.inProgress)),
             label: t("statsCards.inProgress"),
+            sub: split("inProgress"),
             bgColor: "bg-sunbird-ginger",
             iconBg: "hsl(28 53% 38%)",
             icon: InProgressIcon,
         },
         {
             id: "completed",
-            value: coursesCompleted === 0 ? '0' : coursesCompleted.toString().padStart(2, '0'),
+            value: pad(sumOf(tally.completed)),
             label: t("statsCards.completed"),
+            sub: split("completed"),
             bgColor: "bg-sunbird-moss",
             iconBg: "hsl(var(--sunbird-green-dark))",
             icon: CompletedIcon,
         },
         {
             id: "certs",
-            value: certificatesEarned === 0 ? '0' : certificatesEarned.toString().padStart(2, '0'),
+            value: pad(certificatesEarned),
             label: t("statsCards.certificationsEarned"),
             bgColor: "bg-sunbird-lavender",
             iconBg: "hsl(var(--sunbird-purple-dark))",
@@ -143,6 +149,7 @@ const HomeStatsCards = () => {
                         <div className="home-stat-label">
                             {stat.label}
                         </div>
+                        {stat.sub && <div className="home-stat-sub" data-testid={`home-stat-sub-${stat.id}`}>{stat.sub}</div>}
                     </div>
                 );
             })}

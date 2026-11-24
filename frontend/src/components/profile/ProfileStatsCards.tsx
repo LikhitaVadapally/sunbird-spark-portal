@@ -1,4 +1,6 @@
 import { useUserEnrolledCollections } from "@/hooks/useUserEnrolledCollections";
+import { useViewerSummary } from "@/hooks/useViewerSummary";
+import { sumOf, tallyLearning } from "@/services/learningPath/learningTally";
 import { useUserCertificates } from "@/hooks/useCertificate";
 import { useAppI18n } from "@/hooks/useAppI18n";
 
@@ -8,14 +10,10 @@ const ProfileStatsCards = () => {
     const { t } = useAppI18n();
     const { data: enrolledCollections, isLoading: enrollmentsLoading } = useUserEnrolledCollections();
     const { data: certificatesData, isLoading: certificatesLoading } = useUserCertificates();
-    const courses = enrolledCollections?.data?.courses || [];
+    const { data: summaries = [], isLoading: summariesLoading } = useViewerSummary();
+    const tally = tallyLearning(enrolledCollections?.data?.courses || [], summaries);
 
-    const isLoading = enrollmentsLoading || certificatesLoading;
-
-    // Course-level stats using course status (1 = in progress, 2 = completed)
-    const totalCourses = courses.length;
-    const coursesInProgress = courses.filter(course => course.status === 1 && !(course.completionPercentage >= 100)).length;
-    const coursesCompleted = courses.filter(course => course.status === 2 || course.completionPercentage >= 100).length;
+    const isLoading = enrollmentsLoading || certificatesLoading || summariesLoading;
 
     // Get certificate count from the certificate search API
     // The API returns an array of certificates directly
@@ -23,28 +21,35 @@ const ProfileStatsCards = () => {
         ? certificatesData.data.length
         : 0;
 
-    const statsData = [
+    const pad = (n: number) => (n === 0 ? '0' : n.toString().padStart(2, '0'));
+    const split = (k: keyof typeof tally) =>
+        t("statsCards.split", { paths: tally[k].paths, courses: tally[k].courses });
+
+    const statsData: Array<{ id: string; value: string; label: string; sub?: string; icon: typeof TotalContentsIcon }> = [
         {
             id: "total",
-            value: totalCourses === 0 ? '0' : totalCourses.toString().padStart(2, '0'),
-            label: t("statsCards.totalCourses"),
+            value: pad(sumOf(tally.total)),
+            label: t("statsCards.totalLearning"),
+            sub: split("total"),
             icon: TotalContentsIcon,
         },
         {
             id: "progress",
-            value: coursesInProgress === 0 ? '0' : coursesInProgress.toString().padStart(2, '0'),
+            value: pad(sumOf(tally.inProgress)),
             label: t("statsCards.inProgress"),
+            sub: split("inProgress"),
             icon: InProgressIcon,
         },
         {
             id: "completed",
-            value: coursesCompleted === 0 ? '0' : coursesCompleted.toString().padStart(2, '0'),
+            value: pad(sumOf(tally.completed)),
             label: t("statsCards.completed"),
+            sub: split("completed"),
             icon: ContentsCompletedIcon,
         },
         {
             id: "certs",
-            value: certificatesEarned === 0 ? '0' : certificatesEarned.toString().padStart(2, '0'),
+            value: pad(certificatesEarned),
             label: t("statsCards.certificationsEarned"),
             icon: CertificationsIcon,
         },
@@ -109,6 +114,7 @@ const ProfileStatsCards = () => {
                         <div className="stat-label">
                             {stat.label}
                         </div>
+                        {stat.sub && <div className="stat-sub" data-testid={`stat-sub-${stat.id}`}>{stat.sub}</div>}
                     </div>
                 );
             })}

@@ -1647,7 +1647,9 @@
     "totalCourses": "Total de cursos",
     "inProgress": "Em andamento",
     "completed": "Concluído",
-    "certificationsEarned": "Certificações obtidas"
+    "certificationsEarned": "Certificações obtidas",
+    "totalLearning": "Total de aprendizagem",
+    "split": "Trilhas: {{paths}} · Cursos: {{courses}}"
   },
   "exportButton": {
     "exportCsv": "Exportar CSV",

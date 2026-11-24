@@ -5,8 +5,10 @@ import ProfileStatsCards from './ProfileStatsCards';
 // Mock useAppI18n
 vi.mock('@/hooks/useAppI18n', () => ({
     useAppI18n: () => ({
-        t: (key: string) => ({
-            'statsCards.totalCourses': 'Total Courses',
+        t: (key: string, opts?: { paths?: number; courses?: number }) => key === 'statsCards.split'
+            ? `Paths: ${opts?.paths} · Courses: ${opts?.courses}`
+            : ({
+            'statsCards.totalLearning': 'Total Learning',
             'statsCards.inProgress': 'In Progress',
             'statsCards.completed': 'Completed',
             'statsCards.certificationsEarned': 'Certifications Earned',
@@ -24,6 +26,11 @@ vi.mock('@/hooks/useAppI18n', () => ({
 const mockUseUserEnrolledCollections = vi.fn();
 vi.mock('@/hooks/useUserEnrolledCollections', () => ({
     useUserEnrolledCollections: () => mockUseUserEnrolledCollections(),
+}));
+
+let mockSummaries: unknown[] = [];
+vi.mock('@/hooks/useViewerSummary', () => ({
+    useViewerSummary: () => ({ data: mockSummaries, isLoading: false }),
 }));
 
 // Mock useUserCertificates
@@ -67,7 +74,7 @@ describe('ProfileStatsCards', () => {
         render(<ProfileStatsCards />);
 
         // Total Courses: 5 courses enrolled
-        const totalCard = screen.getByText('Total Courses').closest('.stat-card');
+        const totalCard = screen.getByText('Total Learning').closest('.stat-card');
         expect(totalCard).toBeInTheDocument();
         expect(totalCard!.querySelector('.stat-value')!.textContent).toBe('05');
 
@@ -90,7 +97,7 @@ describe('ProfileStatsCards', () => {
     it('applies correct CSS classes to each card', () => {
         render(<ProfileStatsCards />);
 
-        const totalCard = screen.getByText('Total Courses').closest('.stat-card');
+        const totalCard = screen.getByText('Total Learning').closest('.stat-card');
         expect(totalCard).toHaveClass('stat-card-time-spent');
 
         const progressCard = screen.getByText('In Progress').closest('.stat-card');
@@ -124,7 +131,7 @@ describe('ProfileStatsCards', () => {
 
         render(<ProfileStatsCards />);
 
-        expect(screen.getByText('Total Courses')).toBeInTheDocument();
+        expect(screen.getByText('Total Learning')).toBeInTheDocument();
         expect(screen.getByText('In Progress')).toBeInTheDocument();
         expect(screen.getByText('Completed')).toBeInTheDocument();
         expect(screen.getByText('Certifications Earned')).toBeInTheDocument();
@@ -171,5 +178,27 @@ describe('ProfileStatsCards', () => {
         cards.forEach(card => {
             expect(card).toHaveClass('animate-pulse');
         });
+    });
+
+    // Regression: one finished path counted as 5 courses, 1 in progress, 3 completed.
+    it('counts a learning path once, not its per-course records, with its real progress', () => {
+        mockUseUserEnrolledCollections.mockReturnValue({
+            data: { data: { courses: [
+                { courseId: 'lp1', batchId: 'b1', status: 1, completionPercentage: 50, leafNodesCount: 4,
+                  content: { primaryCategory: 'Learning Path' } },
+                { courseId: 'c1', batchId: 'b1:c1', status: 2, completionPercentage: 100 },
+                { courseId: 'c2', batchId: 'b1:c2', status: 2, completionPercentage: 100 },
+            ] } },
+            isLoading: false,
+        });
+        mockSummaries = [{ userId: 'u', collectionId: 'lp1', contextId: 'b1', active: true, status: 2, progress: 4,
+            contentStatus: { a: 2, b: 2, c: 2, d: 2 } }];
+        render(<ProfileStatsCards />);
+        const total = screen.getByText('Total Learning').closest('.stat-card');
+        expect(total).toHaveTextContent('01');
+        expect(screen.getByTestId('stat-sub-total')).toHaveTextContent('Paths: 1 · Courses: 0');
+        expect(screen.getByText('In Progress').closest('.stat-card')).toHaveTextContent('0');
+        expect(screen.getByTestId('stat-sub-completed')).toHaveTextContent('Paths: 1 · Courses: 0');
+        mockSummaries = [];
     });
 });

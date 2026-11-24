@@ -1648,7 +1648,9 @@
     "totalCourses": "إجمالي الدورات",
     "inProgress": "قيد التقدم",
     "completed": "مكتملة",
-    "certificationsEarned": "الشهادات المكتسبة"
+    "certificationsEarned": "الشهادات المكتسبة",
+    "totalLearning": "إجمالي التعلّم",
+    "split": "المسارات: {{paths}} · الدورات: {{courses}}"
   },
   "exportButton": {
     "exportCsv": "تصدير CSV",

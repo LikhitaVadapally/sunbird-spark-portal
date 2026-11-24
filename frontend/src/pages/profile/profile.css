@@ -272,6 +272,10 @@ body .notification-popover-arrow {
     @apply text-sm text-white/90 whitespace-pre-line leading-tight;
 }
 
+.stat-sub {
+    @apply mt-1 text-xs text-white/75 leading-tight;
+}
+
 /* Profile Card */
 .profile-card {
     @apply bg-white rounded-xl p-4 flex flex-col items-center;

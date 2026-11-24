@@ -109,6 +109,10 @@
     letter-spacing: 0%;
 }
 
+.home-stat-sub {
+    @apply font-rubik text-sm leading-tight text-white/75;
+}
+
 /* Continue Learning */
 .home-continue-learning-card {
     @apply w-full max-w-[42.8125rem] min-h-[14.625rem] rounded-xl bg-white flex flex-col lg:flex-row gap-5 p-5 md:p-[30px];
