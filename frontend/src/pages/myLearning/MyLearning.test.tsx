@@ -16,6 +16,9 @@ vi.mock('@/hooks/useMySkills', () => ({
     totalCount: 0,
   })),
 }));
+vi.mock('@/hooks/useViewerSummary', () => ({
+  useViewerSummary: vi.fn(() => ({ data: [], isLoading: false })),
+}));
 vi.mock('@/hooks/useAppI18n');
 
 vi.mock('@/components/common/PageLoader', () => ({

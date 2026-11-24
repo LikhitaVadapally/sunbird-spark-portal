@@ -135,18 +135,21 @@ export function computePathProgress(
     (level) => computeLevelProgress(level, summaryByCollectionId, pathSummary).pct >= 100
   ).length;
 
-  const pct =
-    typeof pathSummary.completionPercentage === 'number'
-      ? pathSummary.completionPercentage
-      : model.leafTotal > 0
-        ? round(
-            (Object.values(pathSummary.contentStatus ?? {}).filter((s) => s === COMPLETE_STATUS).length /
-              model.leafTotal) *
-              100
-          )
-        : 0;
+  const pct = pathCompletionPct(pathSummary, model.leafTotal);
 
   return { pct, completed: doneLevels, total: model.leafTotal, doneLevels, levelCount };
+}
+
+/**
+ * A path's completion from its summary record: the service's own percentage when it sends one
+ * (the live service doesn't yet), else completed leaves over `leafTotal`. Shared by the path page
+ * and My Learning so the two never disagree.
+ */
+export function pathCompletionPct(pathSummary: ViewerSummaryRecord, leafTotal: number): number {
+  if (typeof pathSummary.completionPercentage === 'number') return pathSummary.completionPercentage;
+  if (leafTotal <= 0) return 0;
+  const done = Object.values(pathSummary.contentStatus ?? {}).filter((s) => s === COMPLETE_STATUS).length;
+  return round((done / leafTotal) * 100);
 }
 
 /**

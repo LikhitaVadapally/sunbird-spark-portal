@@ -7,6 +7,8 @@ import MyLearningProgress from "@/components/myLearning/MyLearningProgress";
 import MyLearningUpcomingBatches from "@/components/myLearning/MyLearningUpcomingBatches";
 import { useUserEnrolledCollections } from "@/hooks/useUserEnrolledCollections";
 import { useMySkills } from "@/hooks/useMySkills";
+import { useViewerSummary } from "@/hooks/useViewerSummary";
+import { withPathProgress } from "@/services/learningPath/enrolmentProgress";
 import { useAppI18n } from "@/hooks/useAppI18n";
 import useImpression from "@/hooks/useImpression";
 import { parseCourseContextId } from "@/services/viewer/summaryMapper";
@@ -19,12 +21,14 @@ const MyLearning = () => {
 
   useImpression({ type: 'view', pageid: 'my-learning', env: 'learn' });
 
-  const { data, isLoading, error } = useUserEnrolledCollections();
+  const { data, isLoading: enrolmentsLoading, error } = useUserEnrolledCollections();
+  const { data: summaries = [], isLoading: summariesLoading } = useViewerSummary();
+  const isLoading = enrolmentsLoading || summariesLoading;
   const { aggregate, totalCount: pathsTotal } = useMySkills();
   const [typeFilter, setTypeFilter] = useState<LearningTypeFilter>('course');
 
   const courses = useMemo(() => {
-    const allEnrolments = data?.data?.courses || [];
+    const allEnrolments = withPathProgress(data?.data?.courses || [], summaries);
     return (
       allEnrolments
         // Enrolling in a Learning Path fans out per-course records with a composite
@@ -34,7 +38,7 @@ const MyLearning = () => {
         // Partition by the type the dropdown selected: Learning Paths vs everything else.
         .filter((c) => isLearningPathCategory(c.content?.primaryCategory) === (typeFilter === 'learningPath'))
     );
-  }, [data, typeFilter]);
+  }, [data, summaries, typeFilter]);
 
   // Calculate metrics
   const totalCourses = courses.length;
