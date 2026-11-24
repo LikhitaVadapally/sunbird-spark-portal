@@ -1,5 +1,6 @@
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useLearningPath } from '@/hooks/useLearningPath';
+import { usePathSkills } from '@/hooks/usePathSkills';
 import { parseCourseContextId } from '@/services/viewer/summaryMapper';
 import { LearningPathRail } from './LearningPathRail';
 
@@ -25,6 +26,7 @@ export function LearningPathRailContainer({ courseContextId }: LearningPathRailC
   const activeCourseId = parsedContext?.courseId ?? collectionId;
 
   const lp = useLearningPath(pathId, lpContextId);
+  const pathSkills = usePathSkills(lp.model, lp.summaryByCollectionId, lp.pathSummary);
 
   if (!pathId || lp.isLoading || !lp.model.identifier) return null;
 
@@ -51,6 +53,8 @@ export function LearningPathRailContainer({ courseContextId }: LearningPathRailC
       onOpenPrior={() => navigate(`${basePath}/prior`)}
       onOpenOutcome={lp.model.outcomeAssessment ? () => navigate(`${basePath}/outcome`) : undefined}
       onOpenCourse={(courseId, contentId) => navigate(`${basePath}/course/${courseId}/content/${contentId}`)}
+      skillName={pathSkills.name}
+      stateOf={lp.enrollment.isEnrolled ? pathSkills.stateOf : undefined}
     />
   );
 }

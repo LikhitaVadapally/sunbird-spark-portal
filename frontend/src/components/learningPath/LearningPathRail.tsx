@@ -7,6 +7,7 @@ import { computeCourseProgress, getCourseContentStatus } from '@/services/learni
 import { buildAssessmentInfoMap } from '@/services/learningPath/learningPathAssessment';
 import type { LearningPathModel, LevelProgressInfo, LevelStatusKey, PathProgressInfo } from '@/types/learningPathTypes';
 import type { ViewerSummaryRecord } from '@/types/viewerServiceTypes';
+import type { PathSkill } from '@/services/learningPath/pathSkillStatus';
 
 interface LearningPathRailProps {
   pathTitle: string;
@@ -39,6 +40,9 @@ interface LearningPathRailProps {
   onOpenOutcome?: () => void;
   /** Opens a course directly from its row in the rail (jumps to its first leaf). */
   onOpenCourse: (courseId: string, contentId: string) => void;
+  /** Skill names and states for each course's "Gives you" line; without them it shows raw codes. */
+  skillName?: (code: string) => string;
+  stateOf?: (code: string) => PathSkill | undefined;
 }
 
 /**
@@ -66,6 +70,8 @@ export function LearningPathRail({
   onOpenPrior,
   onOpenOutcome,
   onOpenCourse,
+  skillName,
+  stateOf,
 }: LearningPathRailProps) {
   const { t } = useAppI18n();
   // `null` = untouched, so the active course stays open until the learner
@@ -173,6 +179,8 @@ export function LearningPathRail({
                           activeContentId={activeContentId ?? null}
                           isEnrolled={isEnrolled}
                           isOptional={courseProgress.optional}
+                          skillName={skillName}
+                          stateOf={stateOf}
                         />
                       );
                     })}

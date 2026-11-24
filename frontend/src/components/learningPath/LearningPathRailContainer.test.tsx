@@ -16,6 +16,10 @@ vi.mock('@/hooks/useLearningPath', () => ({
   useLearningPath: (pathId: string | undefined, contextId: string | undefined) => mockLpResult(pathId, contextId),
 }));
 
+vi.mock('@/hooks/usePathSkills', () => ({
+  usePathSkills: () => ({ name: (c: string) => c, stateOf: () => undefined }),
+}));
+
 vi.mock('./LearningPathRail', () => ({
   LearningPathRail: ({ pathTitle }: { pathTitle: string }) => <div data-testid="lp-rail">{pathTitle}</div>,
 }));

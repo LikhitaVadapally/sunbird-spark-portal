@@ -14,6 +14,7 @@ import PageLoader from '@/components/common/PageLoader';
 import { Button } from '@/components/common/Button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/common/Dialog';
 import type { useLearningPath } from '@/hooks/useLearningPath';
+import type { UsePathSkillsResult } from '@/hooks/usePathSkills';
 
 type LearningPathData = ReturnType<typeof useLearningPath>;
 
@@ -26,6 +27,8 @@ interface LearningPathPlayerViewProps {
   onOpenPrior: () => void;
   onOpenOutcome: () => void;
   onNavigateContent: (courseId: string, contentId: string) => void;
+  /** The path's skill names and states, for the rail's "Gives you" lines. */
+  pathSkills?: Pick<UsePathSkillsResult, 'name' | 'stateOf'>;
 }
 
 /**
@@ -44,6 +47,7 @@ export function LearningPathPlayerView({
   onOpenPrior,
   onOpenOutcome,
   onNavigateContent,
+  pathSkills,
 }: LearningPathPlayerViewProps) {
   const { t } = useAppI18n();
   const { model, progress, levelProgress, levelStatuses, priorState, outcomeState, certificateUnlocked, enrollment, pathSummary, summaryByCollectionId } = lp;
@@ -217,6 +221,8 @@ export function LearningPathPlayerView({
         onOpenPrior={onOpenPrior}
         onOpenOutcome={model.outcomeAssessment ? onOpenOutcome : undefined}
         onOpenCourse={onNavigateContent}
+        skillName={pathSkills?.name}
+        stateOf={enrollment.isEnrolled ? pathSkills?.stateOf : undefined}
       />
     </div>
   );

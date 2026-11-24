@@ -294,3 +294,29 @@ describe('LearningPathRail', () => {
     });
   });
 });
+
+describe('LearningPathRail course skills', () => {
+  const modelWithSkills = (): LearningPathModel => {
+    const model = buildModel();
+    const course = model.levels[0]!.courses[0]!;
+    model.levels[0]!.courses[0] = { ...course, skillCodes: ['fe_sk_es6', 'fe_sk_dom'] };
+    return model;
+  };
+
+  // Regression: the player's rail passed no skillName, so the row read "Gives you: fe_sk_es6, fe_sk_dom".
+  it("names a course's skills with the framework names it is given", () => {
+    const names: Record<string, string> = { fe_sk_es6: 'Use ES6 Syntax', fe_sk_dom: 'Manipulate the DOM' };
+    renderRail({ model: modelWithSkills(), skillName: (c) => names[c] ?? c });
+    expect(screen.getByText(/Use ES6 Syntax, Manipulate the DOM/)).toBeInTheDocument();
+    expect(screen.queryByText(/fe_sk_es6/)).not.toBeInTheDocument();
+  });
+
+  it('says the learner already holds them when every skill is held', () => {
+    renderRail({
+      model: modelWithSkills(),
+      skillName: (c) => c.toUpperCase(),
+      stateOf: (code) => ({ code, state: 'held' }) as never,
+    });
+    expect(screen.getByText(/learningPath\.alreadyHold/)).toBeInTheDocument();
+  });
+});

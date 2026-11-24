@@ -90,6 +90,7 @@ const LearningPathPage = () => {
         onOpenPrior={goPrior}
         onOpenOutcome={goOutcome}
         onNavigateContent={openCourse}
+        pathSkills={pathSkills}
       />
     );
   }
