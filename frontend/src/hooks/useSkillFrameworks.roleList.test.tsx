@@ -39,6 +39,23 @@ describe('useSkillFrameworks with role/list', () => {
     expect(result.current.metas.fw?.roles).toEqual({});
   });
 
+  // Regression: with no stale time every mount and window focus refetched role/list.
+  it('reads role/list once for several mounts and a window focus', async () => {
+    const roleList = vi.spyOn(skillService, 'roleList').mockResolvedValue({
+      data: { frameworkId: 'fw', roles: {}, roleNames: {} }, status: 200, headers: {},
+    } as never);
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const stable = ({ children }: { children: ReactNode }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>;
+    const first = renderHook(() => useSkillFrameworks(['fw']), { wrapper: stable });
+    await waitFor(() => expect(first.result.current.metas.fw).toBeDefined());
+    const second = renderHook(() => useSkillFrameworks(['fw']), { wrapper: stable });
+    await waitFor(() => expect(second.result.current.metas.fw).toBeDefined());
+    window.dispatchEvent(new Event('focus'));
+    document.dispatchEvent(new Event('visibilitychange'));
+    await new Promise((r) => setTimeout(r, 20));
+    expect(roleList).toHaveBeenCalledTimes(1);
+  });
+
   it('still fails on other errors', async () => {
     vi.spyOn(skillService, 'roleList').mockRejectedValue(httpError(500));
     const { result } = renderHook(() => useSkillFrameworks(['fw']), { wrapper });

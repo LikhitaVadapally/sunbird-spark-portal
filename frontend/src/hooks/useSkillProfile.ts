@@ -32,6 +32,12 @@ function useStableIds(frameworkIds: string[]): string[] {
 /** Cache key for a framework's roles (lern `role/list`); role authoring invalidates it. */
 export const competencyRolesKey = (frameworkId: string) => ['competencyRoles', frameworkId] as const;
 
+/**
+ * Roles change only when an admin edits them, and that invalidates the key. Without a stale time
+ * every component mount and window focus refetched role/list, dozens of calls per page.
+ */
+const ROLES_STALE_MS = 5 * 60 * 1000;
+
 /** A competency framework's names and tree, through the read cache shared with the role editor. */
 async function readSkillVocabulary(queryClient: QueryClient, id: string): Promise<SkillVocabulary> {
   const body = await queryClient.fetchQuery({
@@ -163,6 +169,8 @@ export function useSkillFrameworks(frameworkIds: string[]): {
         }
       },
       enabled: Boolean(id),
+      staleTime: ROLES_STALE_MS,
+      refetchOnWindowFocus: false,
     })),
     combine: toQuerySlices<CompetencyFrameworkMeta | undefined>,
   });
