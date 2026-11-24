@@ -2,6 +2,8 @@ import { useState } from "react";
 import { orderBy } from "lodash";
 import { FiChevronDown } from "react-icons/fi";
 import { useUserEnrolledCollections } from "@/hooks/useUserEnrolledCollections";
+import { useViewerSummary } from "@/hooks/useViewerSummary";
+import { withPathProgress } from "@/services/learningPath/enrolmentProgress";
 import PageLoader from "@/components/common/PageLoader";
 import { useCertificateDownload } from "@/hooks/useCertificateDownload";
 import { useAppI18n } from "@/hooks/useAppI18n";
@@ -24,8 +26,11 @@ const ProfileLearningList = () => {
     const [filter, setFilter] = useState<FilterType>("all");
     const [showAll, setShowAll] = useState(false);
 
-    const { data, isLoading, isError, refetch } = useUserEnrolledCollections();
-    const courses = data?.data?.courses ?? [];
+    const { data, isLoading: enrolmentsLoading, isError, refetch } = useUserEnrolledCollections();
+    // A path's completion comes from its Viewer summary, as on the path page and My Learning.
+    const { data: summaries = [], isLoading: summariesLoading } = useViewerSummary();
+    const isLoading = enrolmentsLoading || summariesLoading;
+    const courses = withPathProgress(data?.data?.courses ?? [], summaries);
 
     const { downloadCertificate, hasCertificate, downloadingCourseId } = useCertificateDownload();
 

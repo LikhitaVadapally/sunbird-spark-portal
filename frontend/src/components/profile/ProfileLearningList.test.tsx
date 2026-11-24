@@ -14,6 +14,11 @@ vi.mock('@/hooks/useUserEnrolledCollections', () => ({
 const mockDownloadCertificate = vi.fn();
 const mockHasCertificate = vi.fn();
 
+let mockSummaries: unknown[] = [];
+vi.mock('@/hooks/useViewerSummary', () => ({
+  useViewerSummary: () => ({ data: mockSummaries, isLoading: false }),
+}));
+
 vi.mock('@/hooks/useCertificateDownload', () => ({
     useCertificateDownload: vi.fn(() => ({
         downloadCertificate: mockDownloadCertificate,
@@ -114,6 +119,23 @@ describe('ProfileLearningList', () => {
         // Check default filter label (appears in trigger + dropdown item)
         expect(screen.getAllByText('all').length).toBeGreaterThanOrEqual(1);
         expect(screen.getByTestId('filter-option-all')).toBeInTheDocument();
+    });
+
+    // Regression: a finished path showed lern's 50% "Ongoing" here while its own page said 100%.
+    it("lists a learning path as Completed when its Viewer summary is complete", () => {
+        (useUserEnrolledCollections as Mock).mockReturnValue({
+            data: { data: { courses: [
+                { courseId: 'lp1', collectionId: 'lp1', batchId: 'b1', status: 1, courseName: 'Frontend Path',
+                  completionPercentage: 50, leafNodesCount: 4, content: { primaryCategory: 'Learning Path' } },
+            ] } },
+            isLoading: false, isError: false, refetch: vi.fn(),
+        });
+        mockSummaries = [{ userId: 'u', collectionId: 'lp1', contextId: 'b1', active: true, status: 2, progress: 4,
+            contentStatus: { a: 2, b: 2, c: 2, d: 2 } }];
+        render(<MemoryRouter><ProfileLearningList /></MemoryRouter>);
+        fireEvent.click(screen.getByTestId('filter-option-completed'));
+        expect(screen.getByText('Frontend Path')).toBeInTheDocument();
+        mockSummaries = [];
     });
 
     it('filters by Ongoing', () => {
