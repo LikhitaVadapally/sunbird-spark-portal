@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { useUserEnrolledCollections } from "../../hooks/useUserEnrolledCollections";
+import { useEnrolmentsWithPathProgress } from "@/hooks/useEnrolmentsWithPathProgress";
 import type { TrackableCollection } from "../../types/TrackableCollections";
 import { useAppI18n } from '@/hooks/useAppI18n';
 import { getPlaceholderImage } from '@/utils/getPlaceholderImage';
@@ -9,7 +9,7 @@ import { parseCourseContextId } from '@/services/viewer/summaryMapper';
 
 const HomeInProgressGrid = () => {
     const { t } = useAppI18n();
-    const { data, isLoading } = useUserEnrolledCollections();
+    const { courses, isLoading } = useEnrolmentsWithPathProgress();
 
     if (isLoading) {
         return (
@@ -20,21 +20,15 @@ const HomeInProgressGrid = () => {
         );
     }
 
-    const inProgressCourses: TrackableCollection[] = (data?.data?.courses ?? [])
+    const inProgressCourses: TrackableCollection[] = courses
         .filter((course: TrackableCollection) => course.status === 1 && course.completionPercentage < 100)
         // Enrolling in a Learning Path fans out per-course records with a composite
         // "<lpBatchId>:<courseId>" batchId - hide those, the Learning Path's own
         // record (plain batchId) already represents the whole path as one card.
         .filter((course: TrackableCollection) => !parseCourseContextId(course.batchId));
 
-    if (inProgressCourses.length === 0) {
-        return (
-            <section className="mb-8">
-                <h3 className="home-section-title-large mb-4">{t('homeComponents.inProgress')}</h3>
-                <div className="text-center py-8 text-sunbird-gray-77">{t('homeComponents.noCoursesInProgress')}</div>
-            </section>
-        );
-    }
+    // Nothing in progress: leave the section out rather than show an empty one.
+    if (inProgressCourses.length === 0) return null;
 
     return (
         <section className="mb-8">

@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { FiArrowRight } from "react-icons/fi";
 import { Button } from "@/components/common/Button";
-import { useUserEnrolledCollections } from "@/hooks/useUserEnrolledCollections";
+import { useEnrolmentsWithPathProgress } from "@/hooks/useEnrolmentsWithPathProgress";
 import { useCollection } from "@/hooks/useCollection";
 import { getFirstLeafContentIdFromHierarchy } from "@/services/collection/hierarchyTree";
 import type { TrackableCollection } from "@/types/TrackableCollections";
@@ -48,9 +48,9 @@ const CircularProgress = ({ progress }: { progress: number }) => {
 const HomeContinueLearning = () => {
     const { t } = useAppI18n();
     const navigate = useNavigate();
-    const { data, isLoading } = useUserEnrolledCollections();
+    const { courses, isLoading } = useEnrolmentsWithPathProgress();
 
-    const lastAccessedCourse: TrackableCollection | undefined = (data?.data?.courses ?? [])
+    const lastAccessedCourse: TrackableCollection | undefined = courses
         // Enrolling in a Learning Path fans out per-course records with a composite
         // "<lpBatchId>:<courseId>" batchId - strip those, or a course inside an
         // enrolled Learning Path can outrank the path's own record here and get

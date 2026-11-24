@@ -3,13 +3,17 @@ import { render, screen } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import HomeInProgressGrid from './HomeInProgressGrid';
 
+let mockSummaries: unknown[] = [];
+vi.mock('@/hooks/useViewerSummary', () => ({
+    useViewerSummary: () => ({ data: mockSummaries, isLoading: false }),
+}));
+
 vi.mock('@/hooks/useAppI18n', () => ({
     useAppI18n: () => ({
         t: (key: string, options?: any) => {
             const translations: Record<string, string> = {
                 'homeComponents.inProgress': 'In Progress',
                 'loading': 'Loading...',
-                'homeComponents.noCoursesInProgress': 'No courses in progress',
             };
             return translations[key] || (options?.defaultValue || key);
         },
@@ -77,6 +81,22 @@ describe('HomeInProgressGrid', () => {
             </BrowserRouter>
         );
     };
+
+    // Regression: a finished path still showed here at lern's 50%.
+    it('leaves out a learning path its Viewer summary shows as complete', () => {
+        mockUseUserEnrolledCollections.mockReturnValue({
+            data: { data: { courses: [
+                { courseId: 'lp1', courseName: 'Frontend Path', batchId: 'b1', status: 1, completionPercentage: 50,
+                  leafNodesCount: 2, content: { primaryCategory: 'Learning Path' } },
+            ] } },
+            isLoading: false,
+        });
+        mockSummaries = [{ userId: 'u', collectionId: 'lp1', contextId: 'b1', active: true, status: 2, progress: 2,
+            contentStatus: { a: 2, b: 2 } }];
+        renderComponent();
+        expect(screen.queryByText('Frontend Path')).not.toBeInTheDocument();
+        mockSummaries = [];
+    });
 
     it('renders the section title', () => {
         renderComponent();
@@ -147,7 +167,7 @@ describe('HomeInProgressGrid', () => {
         expect(screen.getByText('Loading...')).toBeInTheDocument();
     });
 
-    it('shows empty state when no in-progress courses', () => {
+    it('renders nothing, not an empty section, when nothing is in progress', () => {
         mockUseUserEnrolledCollections.mockReturnValue({
             data: { data: { courses: [mockCourses[2]] } }, // only completed
             isLoading: false,
@@ -155,6 +175,7 @@ describe('HomeInProgressGrid', () => {
 
         renderComponent();
 
-        expect(screen.getByText('No courses in progress')).toBeInTheDocument();
+        expect(screen.queryByText('In Progress')).not.toBeInTheDocument();
+        expect(screen.queryByText('No courses in progress')).not.toBeInTheDocument();
     });
 });

@@ -3,6 +3,11 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import HomeContinueLearning from './HomeContinueLearning';
 
+let mockSummaries: unknown[] = [];
+vi.mock('@/hooks/useViewerSummary', () => ({
+    useViewerSummary: () => ({ data: mockSummaries, isLoading: false }),
+}));
+
 vi.mock('@/hooks/useAppI18n', () => ({
     useAppI18n: () => ({
         t: (key: string) => {
